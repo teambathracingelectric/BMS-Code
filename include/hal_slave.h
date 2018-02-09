@@ -12,4 +12,5 @@
 
 
 
+
 #endif /* INCLUDE_HAL_SLAVE_H_ */
