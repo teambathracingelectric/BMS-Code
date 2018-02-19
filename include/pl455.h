@@ -52,4 +52,31 @@ void delayms(uint16 ms);
 void delayus(uint16 us);
 
 #endif /* PL455_H_ */
+
+/* Testing writing new class */
+/*
+
+class pl455_s
+	{
+public:
+	#define TOTALBOARDS	16
+	#define BAUDRATE 250000
+
+	void Reset();
+	void Wakeup();
+	void CommClear(void);
+	void CommReset(void);
+	boolean GetFaultStat();
+private:
+	#define FRMWRT_SGL_R	0x00 // single device write with response
+	#define FRMWRT_SGL_NR	0x10 // single device write without response
+	#define FRMWRT_GRP_R	0x20 // group broadcast with response
+	#define FRMWRT_GRP_NR	0x30 // group broadcast without response
+	#define FRMWRT_ALL_R	0x60 // general broadcast with response
+	#define FRMWRT_ALL_NR	0x70 // general broadcast without response
+
+	};
+
+ */
+
 //EOF
