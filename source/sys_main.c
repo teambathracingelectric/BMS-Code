@@ -69,12 +69,16 @@ void main(void)
 	systemInit();
 	gioInit();
 	sciInit();
-	sciSetBaudrate(scilinREG, BAUDRATE);
+	sciSetBaudrate(sciREG, BAUDRATE);
 	rtiInit();
 	vimInit();
 
 	_enable_IRQ();
 
+	while(1)
+	{
+		WakePL455();
+	}
 	WakePL455();
 
 	CommClear();
@@ -131,7 +135,7 @@ void main(void)
 	case 125000:
 		nSent = WriteReg(0, 16, 0x00F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
 		delayms(1);
-		sciSetBaudrate(scilinREG, BAUDRATE);
+		sciSetBaudrate(sciREG, BAUDRATE);
 		break;
 	case 250000:
 		delayms(1);
@@ -139,12 +143,12 @@ void main(void)
 	case 500000:
 		nSent = WriteReg(0, 16, 0x20F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
 		delayms(1);
-		sciSetBaudrate(scilinREG, BAUDRATE);
+		sciSetBaudrate(sciREG, BAUDRATE);
 		break;
 	case 1000000:
 		nSent = WriteReg(0, 16, 0x30F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
 		delayms(1);
-		sciSetBaudrate(scilinREG, BAUDRATE);
+		sciSetBaudrate(sciREG, BAUDRATE);
 		break;
 	}
 

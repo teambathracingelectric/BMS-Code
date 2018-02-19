@@ -33,26 +33,26 @@ uint16 CRC16(BYTE *pBuf, int nLen);
 void CommClear(void)
 {
 	int baudRate;
-	baudRate = scilinREG->BRS;
+	baudRate = sciREG->BRS;
 
-	scilinREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	scilinREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	scilinREG->PIO3 &= ~(1U << 2U); // set output to low
+	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
+	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	sciREG->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(baudRate * 2); // ~= 1/BAUDRATE/16*(155+1)*1.01
 	sciInit();
-	sciSetBaudrate(scilinREG, BAUDRATE);
+	sciSetBaudrate(sciREG, BAUDRATE);
 }
 
 void CommReset(void)
 {
-	scilinREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	scilinREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	scilinREG->PIO3 &= ~(1U << 2U); // set output to low
+	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
+	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	sciREG->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(200); // should cover any possible baud rate
 	sciInit();
-	sciSetBaudrate(scilinREG, BAUDRATE);
+	sciSetBaudrate(sciREG, BAUDRATE);
 }
 
 void ResetPL455()
@@ -63,9 +63,10 @@ void ResetPL455()
 void WakePL455()
 {
 	// toggle wake signal
-	gioSetBit(gioPORTA, 0, 0); // assert wake (active low)
-	delayus(10);
-	gioToggleBit(gioPORTA, 0); // deassert wake
+	gioSetBit(gioPORTB, 1, 0); // assert wake (active low)
+	delayus(1000);
+	gioToggleBit(gioPORTB, 1); // deassert wake
+	delayus(1000);
 }
 
 BOOL GetFaultStat()
@@ -187,7 +188,7 @@ int  WriteFrame(BYTE bID, uint16 wAddr, BYTE * pData, BYTE bLen, BYTE bWriteType
 	*pBuf++ = (wCRC & 0xFF00) >> 8;
 	bPktLen += 2;
 
-	sciSend(scilinREG, bPktLen, pFrame);
+	sciSend(sciREG, bPktLen, pFrame);
 
 	return bPktLen;
 }
@@ -256,14 +257,14 @@ int  WaitRespFrame(BYTE *pFrame, BYTE bLen, uint32 dwTimeOut)
 
 	memset(bBuf, 0, sizeof(bBuf));
 
-	sciEnableNotification(scilinREG, SCI_RX_INT);
+	sciEnableNotification(sciREG, SCI_RX_INT);
 	rtiEnableNotification(rtiNOTIFICATION_COMPARE1);
 	 /* rtiNOTIFICATION_COMPARE0 = 1ms
 	 *  rtiNOTIFICATION_COMPARE1 = 5ms
 	 *  rtiNOTIFICATION_COMPARE2 = 8ms
 	 *  rtiNOTIFICATION_COMPARE3 = 10ms
 	 */
-	sciReceive(scilinREG, bLen, bBuf);
+	sciReceive(sciREG, bLen, bBuf);
 	rtiResetCounter(rtiCOUNTER_BLOCK0);
 	rtiStartCounter(rtiCOUNTER_BLOCK0);
 
