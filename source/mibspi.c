@@ -140,7 +140,7 @@ uint32 i ;
     } /* Wait */
 
     /** enable MIBSPI RAM Parity */
-    mibspiREG1->UERRCTRL = (mibspiREG1->UERRCTRL & 0xFFFFFFF0U) | (0x00000005U);
+    mibspiREG1->UERRCTRL = (mibspiREG1->UERRCTRL & 0xFFFFFFF0U) | (0x0000000AU);
 
     /** - initialize transfer groups */
     mibspiREG1->TGCTRL[0U] = (uint32)((uint32)1U << 30U)  /* oneshot */

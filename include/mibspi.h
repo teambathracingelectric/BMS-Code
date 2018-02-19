@@ -217,7 +217,7 @@ typedef struct mibspi_config_reg
 #define MIBSPI1_TGCTRL6_CONFIGVALUE  (0xFFFF7FFFU & ((uint32)((uint32)1U << 30U) | (uint32)((uint32)0U << 29U) | (uint32)((uint32)TRG_ALWAYS << 20U) | (uint32)((uint32)TRG_DISABLED << 16U) | (uint32)((uint32)(8U+0U+0U+0U+0U+0U) << 8U)))
 #define MIBSPI1_TGCTRL7_CONFIGVALUE  (0xFFFF7FFFU & ((uint32)((uint32)1U << 30U) | (uint32)((uint32)0U << 29U) | (uint32)((uint32)TRG_ALWAYS << 20U) | (uint32)((uint32)TRG_DISABLED << 16U) | (uint32)((uint32)(8U+0U+0U+0U+0U+0U+0U) << 8U)))
 
-#define MIBSPI1_UERRCTRL_CONFIGVALUE (0x00000005U)
+#define MIBSPI1_UERRCTRL_CONFIGVALUE (0x0000000AU)
 
 
 

@@ -96,7 +96,7 @@ void sciInit(void)
                   | (uint32)((uint32)1U << 1U);  /* asynchronous timing mode */
 
     /** - set baudrate */
-    sciREG->BRS = 520U;  /* baudrate */
+    sciREG->BRS = 19U;  /* baudrate */
 
     /** - transmission length */
     sciREG->FORMAT = 8U - 1U;  /* length */
@@ -138,8 +138,8 @@ void sciInit(void)
     sciREG->SETINT = (uint32)((uint32)0U << 26U)  /* Framing error */
                    | (uint32)((uint32)0U << 25U)  /* Overrun error */
                    | (uint32)((uint32)0U << 24U)  /* Parity error */
-                   | (uint32)((uint32)0U << 9U)  /* Receive */
-                   | (uint32)((uint32)0U << 1U)  /* Wakeup */
+                   | (uint32)((uint32)1U << 9U)  /* Receive */
+                   | (uint32)((uint32)1U << 1U)  /* Wakeup */
                    | (uint32)((uint32)0U << 0U);  /* Break detect */
 
     /** - initialize global transfer variables */

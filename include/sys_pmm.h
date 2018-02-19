@@ -87,8 +87,8 @@ extern "C" {
 										| (uint32)((uint32)(1U-1U) << 2U) \
 										| (uint32)((uint32)(1U-1U) << 3U) )
 
-#define PMM_GLOBALCTRL1_CONFIGVALUE		( (uint32)((uint32)0U << 8U) \
-                                        | (uint32)((uint32)0U << 0U))
+#define PMM_GLOBALCTRL1_CONFIGVALUE		( (uint32)((uint32)1U << 8U) \
+                                        | (uint32)((uint32)1U << 0U))
 
 
 /** @enum pmmLogicPDTag

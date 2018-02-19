@@ -1686,132 +1686,8 @@ void can1ParityCheck(void)
 }
 
 
-/** @fn void can2ParityCheck(void)
-*   @brief Routine to check CAN2 RAM parity error detection and signaling mechanism
-*
-*   Routine to check CAN2 RAM parity error detection and signaling mechanism
-*/
-/* SourceId : SELFTEST_SourceId_029 */
-/* DesignId : SELFTEST_DesignId_026 */
-/* Requirements : HL_SR393 */
-void can2ParityCheck(void)
-{
-    volatile uint32 canread = 0U;
-    /*SAFETYMCUSW 134 S MR:12.2 <APPROVED> "LDRA Tool issue" */
-    uint32 canctl_bk = canREG2->CTL;
-
-/* USER CODE BEGIN (67) */
-/* USER CODE END */
-
-    /* Disable parity, init mode, TEST mode */
-    canREG2->CTL = 0x00001481U;
-
-    /* Enable RAM Direct Access mode */
-    canREG2->TEST = 0x00000200U;
-
-    /* flip the parity bit */
-    canPARRAM2 ^= 0x00001000U;
-
-    /* Enable parity, disable init, still TEST mode */
-    canREG2->CTL = 0x00002880U;
-
-    /* Read location with parity error */
-    canread = canRAM2;
-
-    /* check if ESM group1 channel 23 is flagged */
-    if ((esmREG->SR1[0U] & 0x00800000U) == 0U)
-    {
-        /* No DCAN2 RAM parity error was flagged to ESM */
-        selftestFailNotification(CAN2PARITYCHECK_FAIL1);
-    }
-    else
-    {
-        /* clear ESM group1 channel 23 flag */
-        esmREG->SR1[0U] = 0x00800000U;
-
-        /* Disable parity, init mode, TEST mode */
-        canREG2->CTL = 0x00001481U;
-
-        /* Revert back to correct data, flip bit 0 of the parity location */
-        canPARRAM2 ^= 0x00001000U;
-    }
-
-    /* Disable RAM Direct Access mode */
-    canREG2->TEST = 0x00000000U;
-
-    /* disable TEST mode */
-    canREG2->CTL = canctl_bk;
-
-    /* Read Error and Status register to clear Parity Error bit */
-    canread = canREG2->ES;
-
-/* USER CODE BEGIN (68) */
-/* USER CODE END */
-}
 
 
-/** @fn void can3ParityCheck(void)
-*   @brief Routine to check CAN3 RAM parity error detection and signaling mechanism
-*
-*   Routine to check CAN3 RAM parity error detection and signaling mechanism
-*/
-/* SourceId : SELFTEST_SourceId_030 */
-/* DesignId : SELFTEST_DesignId_026 */
-/* Requirements : HL_SR393 */
-void can3ParityCheck(void)
-{
-    volatile uint32 canread = 0U;
-    /*SAFETYMCUSW 134 S MR:12.2 <APPROVED> "LDRA Tool issue" */
-    uint32 canctl_bk = canREG3->CTL;
-
-/* USER CODE BEGIN (69) */
-/* USER CODE END */
-
-    /* Disable parity, init mode, TEST mode */
-    canREG3->CTL = 0x00001481U;
-
-    /* Enable RAM Direct Access mode */
-    canREG3->TEST = 0x00000200U;
-
-    /* flip the parity bit */
-    canPARRAM3 ^= 0x00001000U;
-
-    /* Enable parity, disable init, still TEST mode */
-    canREG3->CTL = 0x00002880U;
-
-    /* Read location with parity error */
-    canread = canRAM3;
-
-    /* check if ESM group1 channel 22 is flagged */
-    if ((esmREG->SR1[0U] & 0x00400000U) == 0U)
-    {
-        /* No DCAN3 RAM parity error was flagged to ESM */
-        selftestFailNotification(CAN3PARITYCHECK_FAIL1);
-    }
-    else
-    {
-        /* clear ESM group1 channel 22 flag */
-        esmREG->SR1[0U] = 0x00400000U;
-
-        /* Disable parity, init mode, TEST mode */
-        canREG3->CTL = 0x00001481U;
-
-        /* Revert back to correct data, flip bit 0 of the parity location */
-        canPARRAM3 ^= 0x00001000U;
-    }
-
-    /* Disable RAM Direct Access mode */
-    canREG3->TEST = 0x00000000U;
-
-    /* disable TEST mode */
-    canREG3->CTL = canctl_bk;
-
-    /* Read Error and Status register to clear Parity Error bit */
-    canread = canREG3->ES;
-
-/* USER CODE BEGIN (70) */
-/* USER CODE END */
-}
 
 
 /** @fn void mibspi1ParityCheck(void)
@@ -1878,133 +1754,7 @@ void mibspi1ParityCheck(void)
 /* USER CODE END */
 }
 
-/** @fn void mibspi3ParityCheck(void)
-*   @brief Routine to check MIBSPI3 RAM parity error detection and signaling mechanism
-*
-*   Routine to check MIBSPI3 RAM parity error detection and signaling mechanism
-*/
-/* SourceId : SELFTEST_SourceId_032 */
-/* DesignId : SELFTEST_DesignId_027 */
-/* Requirements : HL_SR386 */
-void mibspi3ParityCheck(void)
-{
-    volatile uint32 spiread = 0U;
-    uint32 mibspie_bk = mibspiREG3->MIBSPIE;
-    uint32 mibspictl_bk = mibspiREG3->UERRCTRL;
 
-/* USER CODE BEGIN (73) */
-/* USER CODE END */
-
-    /* enable multi-buffered mode */
-    mibspiREG3->MIBSPIE = 0x1U;
-
-    /* enable parity test mode */
-    mibspiREG3->UERRCTRL |= 0x00000100U;
-
-    /* flip bit 0 of the parity location */
-    mibspiPARRAM3 ^= 0x1U;
-
-    /* enable parity error detection */
-    mibspiREG3->UERRCTRL = (mibspiREG3->UERRCTRL & 0xFFFFFFF0U) | (0xAU);
-
-    /* disable parity test mode */
-    mibspiREG3->UERRCTRL &= 0xFFFFFEFFU;
-
-    /* read from MibSPI3 RAM to cause parity error */
-    spiread = MIBSPI3RAMLOC;
-
-    /* check if ESM group1 channel 18 is flagged */
-    if ((esmREG->SR1[0U] & 0x40000U) == 0U)
-    {
-        /* No MibSPI3 RAM parity error was flagged to ESM. */
-        selftestFailNotification(MIBSPI3PARITYCHECK_FAIL1);
-    }
-    else
-    {
-        /* clear parity error flags */
-        mibspiREG3->UERRSTAT = 0x3U;
-
-        /* clear ESM group1 channel 18 flag */
-        esmREG->SR1[0U] = 0x40000U;
-
-        /* enable parity test mode */
-        mibspiREG3->UERRCTRL |= 0x00000100U;
-
-        /* Revert back to correct data, flip bit 0 of the parity location */
-        mibspiPARRAM3 ^= 0x1U;
-    }
-
-    /* Restore MIBSPI control registers */
-    mibspiREG3->UERRCTRL = mibspictl_bk;
-    mibspiREG3->MIBSPIE = mibspie_bk;
-
-/* USER CODE BEGIN (74) */
-/* USER CODE END */
-}
-
-/** @fn void mibspi5ParityCheck(void)
-*   @brief Routine to check MIBSPI5 RAM parity error detection and signaling mechanism
-*
-*   Routine to check MIBSPI5 RAM parity error detection and signaling mechanism
-*/
-/* SourceId : SELFTEST_SourceId_033 */
-/* DesignId : SELFTEST_DesignId_027 */
-/* Requirements : HL_SR386 */
-void mibspi5ParityCheck(void)
-{
-    volatile uint32 spiread = 0U;
-    uint32 mibspie_bk = mibspiREG5->MIBSPIE;
-    uint32 mibspictl_bk = mibspiREG5->UERRCTRL;
-
-/* USER CODE BEGIN (75) */
-/* USER CODE END */
-
-    /* enable multi-buffered mode */
-    mibspiREG5->MIBSPIE = 0x1U;
-
-    /* enable parity test mode */
-    mibspiREG5->UERRCTRL |= 0x00000100U;
-
-    /* flip bit 0 of the parity location */
-    mibspiPARRAM5 ^= 0x1U;
-
-    /* enable parity error detection */
-    mibspiREG5->UERRCTRL = (mibspiREG5->UERRCTRL & 0xFFFFFFF0U) | (0xAU);
-
-    /* disable parity test mode */
-    mibspiREG5->UERRCTRL &= 0xFFFFFEFFU;
-
-    /* read from MibSPI5 RAM to cause parity error */
-    spiread = MIBSPI5RAMLOC;
-
-    /* check if ESM group1 channel 24 is flagged */
-    if ((esmREG->SR1[0U] & 0x01000000U) == 0U)
-    {
-        /* No MibSPI5 RAM parity error was flagged to ESM. */
-        selftestFailNotification(MIBSPI5PARITYCHECK_FAIL1);
-    }
-    else
-    {
-        /* clear parity error flags */
-        mibspiREG5->UERRSTAT = 0x3U;
-
-        /* clear ESM group1 channel 24 flag */
-        esmREG->SR1[0U] = 0x01000000U;
-
-        /* enable parity test mode */
-        mibspiREG5->UERRCTRL |= 0x00000100U;
-
-        /* Revert back to correct data, flip bit 0 of the parity location */
-        mibspiPARRAM5 ^= 0x1U;
-    }
-
-    /* Restore MIBSPI control registers */
-    mibspiREG5->UERRCTRL = mibspictl_bk;
-    mibspiREG5->MIBSPIE = mibspie_bk;
-
-/* USER CODE BEGIN (76) */
-/* USER CODE END */
-}
 
 /** @fn void checkRAMECC(void)
 *   @brief Check TCRAM ECC error detection logic.
@@ -2951,8 +2701,6 @@ void enableParity(void)
     DMA_PARCR = 0xAU;                      /* Enable DMA RAM parity */
     VIM_PARCTL = 0xAU;                     /* Enable VIM RAM parity */
     canREG1->CTL = ((uint32)0xAU << 10U) | 1U;    /* Enable CAN1 RAM parity */
-    canREG2->CTL = ((uint32)0xAU << 10U) | 1U;    /* Enable CAN2 RAM parity */
-    canREG3->CTL = ((uint32)0xAU << 10U) | 1U;    /* Enable CAN3 RAM parity */
     adcREG1->PARCR = 0xAU;                 /* Enable ADC1 RAM parity */
     adcREG2->PARCR = 0xAU;                 /* Enable ADC2 RAM parity */
     hetREG1->PCR = 0xAU;                   /* Enable HET1 RAM parity */
@@ -2974,8 +2722,6 @@ void disableParity(void)
     DMA_PARCR = 0x5U;                      /* Disable DMA RAM parity */
     VIM_PARCTL = 0x5U;                     /* Disable VIM RAM parity */
     canREG1->CTL = ((uint32)0x5U << 10U) | 1U;    /* Disable CAN1 RAM parity */
-    canREG2->CTL = ((uint32)0x5U << 10U) | 1U;    /* Disable CAN2 RAM parity */
-    canREG3->CTL = ((uint32)0x5U << 10U) | 1U;    /* Disable CAN3 RAM parity */
     adcREG1->PARCR = 0x5U;                 /* Disable ADC1 RAM parity */
     adcREG2->PARCR = 0x5U;                 /* Disable ADC2 RAM parity */
     hetREG1->PCR = 0x5U;                   /* Disable HET1 RAM parity */

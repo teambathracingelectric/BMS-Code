@@ -60,6 +60,8 @@
 #include "dcc.h"
 #include "crc.h"
 #include "etpwm.h"
+#include "eqep.h"
+#include "ecap.h"
 #include "sys_dma.h"
 
 /* USER CODE BEGIN (0) */
@@ -266,10 +268,28 @@ void etpwmTripNotification(etpwmBASE_t *node,uint16 flags)
 /* USER CODE BEGIN (47) */
 /* USER CODE END */
 
+#pragma WEAK(eqepNotification)
+void eqepNotification(eqepBASE_t *eqep,uint16 flags)
+{
+/*  enter user code between the USER CODE BEGIN and USER CODE END. */
+/* USER CODE BEGIN (48) */
+/* USER CODE END */
+}
+/* USER CODE BEGIN (49) */
+/* USER CODE END */
 
 /* USER CODE BEGIN (50) */
 /* USER CODE END */
 
+#pragma WEAK(ecapNotification)
+void ecapNotification(ecapBASE_t *ecap,uint16 flags)
+{
+/*  enter user code between the USER CODE BEGIN and USER CODE END. */
+/* USER CODE BEGIN (51) */
+/* USER CODE END */
+}
+/* USER CODE BEGIN (52) */
+/* USER CODE END */
 
 /* USER CODE BEGIN (53) */
 /* USER CODE END */

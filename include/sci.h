@@ -133,12 +133,12 @@ typedef struct sci_config_reg
 #define SCI_SETINT_CONFIGVALUE     ((uint32)((uint32)0U << 26U) \
                                    |(uint32)((uint32)0U << 25U) \
                                    |(uint32)((uint32)0U << 24U) \
-                                   |(uint32)((uint32)0U << 9U) \
-                                   |(uint32)((uint32)0U << 1U) \
+                                   |(uint32)((uint32)1U << 9U) \
+                                   |(uint32)((uint32)1U << 1U) \
                                    |(uint32)((uint32)0U << 0U))
                                    
 #define SCI_FORMAT_CONFIGVALUE     (8U - 1U)
-#define SCI_BRS_CONFIGVALUE        (520U)
+#define SCI_BRS_CONFIGVALUE        (19U)
 #define SCI_PIO0_CONFIGVALUE       ((uint32)((uint32)1U << 2U ) | (uint32)((uint32)1U << 1U))
 #define SCI_PIO1_CONFIGVALUE       ((uint32)((uint32)0U << 2U ) | (uint32)((uint32)0U << 1U))
 #define SCI_PIO6_CONFIGVALUE       ((uint32)((uint32)0U << 2U ) | (uint32)((uint32)0U << 1U))

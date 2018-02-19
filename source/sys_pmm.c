@@ -57,7 +57,7 @@ void pmmInit(void)
     /*Disable clocks to all logic domains*/
     pmmREG->PDCLKDISREG = 0xFU;
     /*Enable or disable clock to pmctrl_wakeup block and automatic clock wake up*/
-    pmmREG->GLOBALCTRL1 = (uint32)((uint32)0U << 8U) | (uint32)0U; /*from GUI*/
+    pmmREG->GLOBALCTRL1 = (uint32)((uint32)1U << 8U) | (uint32)1U; /*from GUI*/
     /*Power on the logic power domains*/
     pmmREG->LOGICPDPWRCTRL0 = PMM_LOGICPDPWRCTRL0_CONFIGVALUE;
     /*Power on the memory-only power domains*/

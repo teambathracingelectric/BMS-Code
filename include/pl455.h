@@ -27,7 +27,7 @@
 #define FRMWRT_ALL_R	0x60 // general broadcast with response
 #define FRMWRT_ALL_NR	0x70 // general broadcast without response
 
-#define TOTALBOARDS	1
+#define TOTALBOARDS	16
 #define BAUDRATE 250000
 
 // Function Prototypes
@@ -50,8 +50,6 @@ int  WaitRespFrame(BYTE *pFrame, BYTE bLen, uint32 dwTimeOut);
 
 void delayms(uint16 ms);
 void delayus(uint16 us);
-
-
 
 #endif /* PL455_H_ */
 //EOF
