@@ -17,7 +17,7 @@
 #ifndef PL455_H_
 #define PL455_H_
 
-#include "datatypes.h"
+//#include "datatypes.h"
 
 // User defines
 #define FRMWRT_SGL_R	0x00 // single device write with response
@@ -35,18 +35,18 @@ void ResetPL455();
 void WakePL455();
 void CommClear(void);
 void CommReset(void);
-BOOL GetFaultStat();
+boolean GetFaultStat();
 
 uint16  B2SWORD(uint16 wIN);
 uint32 B2SDWORD(uint32 dwIN);
 uint32 B2SINT24(uint32 dwIN24);
 
-int  WriteReg(BYTE bID, uint16 wAddr, uint64 dwData, BYTE bLen, BYTE bWriteType);
-int  ReadReg(BYTE bID, uint16 wAddr, void * pData, BYTE bLen, uint32 dwTimeOut);
+sint32  WriteReg(uint8 bID, uint16 wAddr, uint64 dwData, uint8 bLen, uint8 bWriteType);
+sint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTimeOut);
 
-int  WriteFrame(BYTE bID, uint16 wAddr, BYTE * pData, BYTE bLen, BYTE bWriteType);
-int  ReadFrameReq(BYTE bID, uint16 wAddr, BYTE bByteToReturn);
-int  WaitRespFrame(BYTE *pFrame, BYTE bLen, uint32 dwTimeOut);
+sint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWriteType);
+sint32  ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn);
+sint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut);
 
 void delayms(uint16 ms);
 void delayus(uint16 us);

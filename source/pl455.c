@@ -16,42 +16,43 @@
 
 #include "string.h"
 
+#include "gio.h"
 #include "sci.h"
 #include "rti.h"
 #include "reg_rti.h"
 
 #include "pl455.h"
-#include "datatypes.h"
+//#include "datatypes.h"
 
 extern int UART_RX_RDY;
 extern int RTI_TIMEOUT;
 
 // internal function prototype
-uint16 CRC16(BYTE *pBuf, int nLen);
+uint16 CRC16(uint8 *pBuf, uint16 nLen);
 
 void CommClear(void)
 {
 	int baudRate;
-	baudRate = scilinREG->BRS;
+	baudRate = sciREG->BRS;
 
-	scilinREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	scilinREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	scilinREG->PIO3 &= ~(1U << 2U); // set output to low
+	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
+	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	sciREG->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(baudRate * 2); // ~= 1/BAUDRATE/16*(155+1)*1.01
 	sciInit();
-	sciSetBaudrate(scilinREG, BAUDRATE);
+	sciSetBaudrate(sciREG, BAUDRATE);
 }
 
 void CommReset(void)
 {
-	scilinREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	scilinREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	scilinREG->PIO3 &= ~(1U << 2U); // set output to low
+	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
+	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	sciREG->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(200); // should cover any possible baud rate
 	sciInit();
-	sciSetBaudrate(scilinREG, BAUDRATE);
+	sciSetBaudrate(sciREG, BAUDRATE);
 }
 
 void ResetPL455()
@@ -67,7 +68,7 @@ void WakePL455()
 	gioToggleBit(gioPORTA, 0); // deassert wake
 }
 
-BOOL GetFaultStat()
+boolean GetFaultStat()
 {
 
 	if (!gioGetBit(gioPORTA, 1))
@@ -75,10 +76,10 @@ BOOL GetFaultStat()
 	return 1;
 }
 
-int  WriteReg(BYTE bID, uint16 wAddr, uint64 dwData, BYTE bLen, BYTE bWriteType)
+sint32  WriteReg(uint8 bID, uint16 wAddr, uint64 dwData, uint8 bLen, uint8 bWriteType)
 {
-	int bRes = 0;
-	BYTE bBuf[4] = {0, 0, 0, 0};
+	uint8 bRes = 0;
+	uint8 bBuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 	switch(bLen)
 	{
 	case 1:
@@ -147,11 +148,11 @@ int  WriteReg(BYTE bID, uint16 wAddr, uint64 dwData, BYTE bLen, BYTE bWriteType)
 	return bRes;
 }
 
-int  WriteFrame(BYTE bID, uint16 wAddr, BYTE * pData, BYTE bLen, BYTE bWriteType)
+sint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWriteType)
 {
 	int	   bPktLen = 0;
-	BYTE   pFrame[32];
-	BYTE * pBuf = pFrame;
+	uint8   pFrame[32];
+	uint8 * pBuf = pFrame;
 	uint16   wCRC;
 
 	if (bLen == 7 || bLen > 8)
@@ -186,15 +187,15 @@ int  WriteFrame(BYTE bID, uint16 wAddr, BYTE * pData, BYTE bLen, BYTE bWriteType
 	*pBuf++ = (wCRC & 0xFF00) >> 8;
 	bPktLen += 2;
 
-	sciSend(scilinREG, bPktLen, pFrame);
+	sciSend(sciREG, bPktLen, pFrame);
 
 	return bPktLen;
 }
 
-int  ReadReg(BYTE bID, uint16 wAddr, void * pData, BYTE bLen, uint32 dwTimeOut)
+sint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTimeOut)
 {
-	int   bRes = 0;
-	BYTE  bRX[8];
+	sint32   bRes = 0;
+	uint8  bRX[8];
 
 	memset(bRX, 0, sizeof(bRX));
 	switch(bLen)
@@ -203,7 +204,7 @@ int  ReadReg(BYTE bID, uint16 wAddr, void * pData, BYTE bLen, uint32 dwTimeOut)
 		bRes = ReadFrameReq(bID, wAddr, 1);
 		bRes = WaitRespFrame(bRX, 4, dwTimeOut);
 		if (bRes == 1)
-			*((BYTE *)pData) = bRX[1] & 0x00FF;
+			*((uint8 *)pData) = bRX[1] & 0x00FF;
 		else
 			bRes = 0;
 		break;
@@ -237,9 +238,9 @@ int  ReadReg(BYTE bID, uint16 wAddr, void * pData, BYTE bLen, uint32 dwTimeOut)
 	return bRes;
 }
 
-int  ReadFrameReq(BYTE bID, uint16 wAddr, BYTE bByteToReturn)
+sint32  ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn)
 {
-	BYTE bReturn = bByteToReturn - 1;
+	uint8 bReturn = buint8ToReturn - 1;
 
 	if (bReturn > 127)
 		return 0;
@@ -247,22 +248,22 @@ int  ReadFrameReq(BYTE bID, uint16 wAddr, BYTE bByteToReturn)
 	return WriteFrame(bID, wAddr, &bReturn, 1, FRMWRT_SGL_R);
 }
 
-int  WaitRespFrame(BYTE *pFrame, BYTE bLen, uint32 dwTimeOut)
+sint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
 {
 	uint16 wCRC = 0, wCRC16;
-	BYTE bBuf[132];
-	BYTE bRxDataLen;
+	uint8 bBuf[132];
+	uint8 bRxDataLen;
 
 	memset(bBuf, 0, sizeof(bBuf));
 
-	sciEnableNotification(scilinREG, SCI_RX_INT);
+	sciEnableNotification(sciREG, SCI_RX_INT);
 	rtiEnableNotification(rtiNOTIFICATION_COMPARE1);
 	 /* rtiNOTIFICATION_COMPARE0 = 1ms
 	 *  rtiNOTIFICATION_COMPARE1 = 5ms
 	 *  rtiNOTIFICATION_COMPARE2 = 8ms
 	 *  rtiNOTIFICATION_COMPARE3 = 10ms
 	 */
-	sciReceive(scilinREG, bLen, bBuf);
+	sciReceive(sciREG, bLen, bBuf);
 	rtiResetCounter(rtiCOUNTER_BLOCK0);
 	rtiStartCounter(rtiCOUNTER_BLOCK0);
 
@@ -282,7 +283,7 @@ int  WaitRespFrame(BYTE *pFrame, BYTE bLen, uint32 dwTimeOut)
 
 	delayms(dwTimeOut);
 
-	// rebuild bBuf to have bLen as first byte to use the same CRC function as TX
+	// rebuild bBuf to have bLen as first uint8 to use the same CRC function as TX
 //	i = bRxDataLen + 3;
 //	while(--i >= 0)
 //	{
@@ -372,10 +373,10 @@ const uint16 crc16_table[256] = {
 	0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
 };
 
-uint16 CRC16(BYTE *pBuf, int nLen)
+uint16 CRC16(uint8 *pBuf, uint16 nLen)
 {
 	uint16 wCRC = 0;
-	int i;
+	uint16 i;
 
 	for (i = 0; i < nLen; i++)
 	{
