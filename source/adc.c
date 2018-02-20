@@ -113,7 +113,7 @@ void adcInit(void)
     *     - Enable/Disable discharge
     */
     adcREG1->EVSAMPDISEN = (uint32)((uint32)0U << 8U)
-                         | (uint32)0x00000000U;
+                         | (uint32)0x00000001U;
 
     /** - Setup group 1 conversion mode
     *     - Setup data format
@@ -130,7 +130,7 @@ void adcInit(void)
      *     - Setup hardware trigger source
      */
     adcREG1->G1SRC = (uint32)0x00000000U
-                   | (uint32)ADC1_EVENT;
+                   | (uint32)ADC1_EVENT; /* Alternate Trigger Source */
 
     /** - Setup group 1 sample window */
     adcREG1->G1SAMP = 1U;
@@ -157,7 +157,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG1->G2SRC = (uint32)0x00000000U
-                   | (uint32)ADC1_EVENT;
+                   | (uint32)ADC1_EVENT; /* Alternate Trigger Source */
 
     /** - Setup group 2 sample window */
     adcREG1->G2SAMP = 1U;
@@ -194,7 +194,7 @@ void adcInit(void)
 	} /* Wait */
     
     /** - Setup parity */
-    adcREG1->PARCR = 0x00000005U;
+    adcREG1->PARCR = 0x0000000AU;
 
 
 
@@ -228,7 +228,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG2->EVSRC = (uint32)0x00000000U
-                   | (uint32)ADC2_EVENT;
+                   | (uint32)ADC2_EVENT; /* Alternate Trigger Source */
 
     /** - Setup event group sample window */
     adcREG2->EVSAMP = 1U;
@@ -255,7 +255,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG2->G1SRC = (uint32)0x00000000U
-                   | (uint32)ADC2_EVENT;
+                   | (uint32)ADC2_EVENT; /* Alternate Trigger Source */
 
 
     /** - Setup group 1 sample window */
@@ -283,7 +283,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG2->G2SRC = (uint32)0x00000000U
-                   | (uint32)ADC2_EVENT;
+                   | (uint32)ADC2_EVENT;  /* Alternate Trigger Source */
 
     /** - Setup group 2 sample window */
     adcREG2->G2SAMP = 1U;

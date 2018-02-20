@@ -224,8 +224,7 @@
       <HDRLIN>
         <NAME>lin.h</NAME>
       </HDRLIN>
-      <SRCLIN>
-</SRCLIN>
+      <SRCLIN/>
       <HDRMIBSPI_R>
         <NAME>reg_mibspi.h</NAME>
       </HDRMIBSPI_R>
@@ -339,14 +338,18 @@
       <HDRECAP>
         <NAME>ecap.h</NAME>
       </HDRECAP>
-      <SRCECAP/>
+      <SRCECAP>
+        <NAME>ecap.c</NAME>
+      </SRCECAP>
       <HDREQEP_R>
         <NAME>reg_eqep.h</NAME>
       </HDREQEP_R>
       <HDREQEP>
         <NAME>eqep.h</NAME>
       </HDREQEP>
-      <SRCEQEP/>
+      <SRCEQEP>
+        <NAME>eqep.c</NAME>
+      </SRCEQEP>
       <HDR1FEE>
         <NAME>Device_TMS570LS12.h</NAME>
       </HDR1FEE>
@@ -450,7 +453,7 @@
         <PATH>include\lin.h</PATH>
       </HDRLIN>
       <SRCLIN>
-        <PATH></PATH>
+        <PATH/>
       </SRCLIN>
     </FILENAMES>
   </LIN>
@@ -602,7 +605,7 @@
         <PATH>include\ecap.h</PATH>
       </HDRECAP>
       <SRCECAP>
-        <PATH/>
+        <PATH>source\ecap.c</PATH>
       </SRCECAP>
     </FILENAMES>
   </ECAP>
@@ -615,7 +618,7 @@
         <PATH>include\eqep.h</PATH>
       </HDREQEP>
       <SRCEQEP>
-        <PATH/>
+        <PATH>source\eqep.c</PATH>
       </SRCEQEP>
     </FILENAMES>
   </EQEP>

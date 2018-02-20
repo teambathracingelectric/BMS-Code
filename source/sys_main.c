@@ -50,6 +50,8 @@
 #include "sys_common.h"
 
 /* USER CODE BEGIN (1) */
+//#include "pl455.h"
+#include "gio.h"
 /* USER CODE END */
 
 /** @fn void main(void)
@@ -61,11 +63,28 @@
 */
 
 /* USER CODE BEGIN (2) */
+void delayus(uint16 us) {
+	  static volatile unsigned int delayval;
+	  delayval = us * 9;
+	  while(delayval--);
+}
 /* USER CODE END */
 
 int main(void)
 {
 /* USER CODE BEGIN (3) */
+
+//	systemInit();
+	gioInit();
+
+	while(1)
+	{// Run test code to see if GPIO works
+		delayus(500);
+		gioToggleBit(gioPORTA, 0); // toggle wakeup signal
+		delayus(500);
+		gioToggleBit(gioPORTB, 0); // toggle BMS-OK signal
+	}
+
 /* USER CODE END */
 
     return 0;

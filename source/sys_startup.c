@@ -406,11 +406,11 @@ void _c_int00(void)
              | (uint32)0x00000800U    /* DMA RAM */
              | (uint32)0x00000200U    /* VIM RAM */
              | (uint32)0x00000040U    /* MIBSPI1 RAM */
-             | (uint32)0x00000080U    /* MIBSPI3 RAM */
-             | (uint32)0x00000100U    /* MIBSPI5 RAM */
+             | (uint32)0x00000000U    /* MIBSPI3 RAM */
+             | (uint32)0x00000000U    /* MIBSPI5 RAM */
              | (uint32)0x00000004U    /* CAN1 RAM */
-             | (uint32)0x00000008U    /* CAN2 RAM */
-             | (uint32)0x00000010U    /* CAN3 RAM */
+             | (uint32)0x00000000U    /* CAN2 RAM */
+             | (uint32)0x00000000U    /* CAN3 RAM */
              | (uint32)0x00000400U    /* ADC1 RAM */
              | (uint32)0x00020000U    /* ADC2 RAM */
              | (uint32)0x00001000U    /* HET1 RAM */
@@ -497,16 +497,6 @@ void _c_int00(void)
      */
      mibspiREG1->GCR0 = 0x1U;
      
-    /* Release the MibSPI3 modules from local reset.
-     * This will cause the MibSPI3 RAMs to get initialized along with the parity memory.
-     */
-    mibspiREG3->GCR0 = 0x1U;
-    
-    /* Release the MibSPI5 modules from local reset.
-     * This will cause the MibSPI5 RAMs to get initialized along with the parity memory.
-     */
-    mibspiREG5->GCR0 = 0x1U;
-    
 /* USER CODE BEGIN (56) */
 /* USER CODE END */
 
@@ -525,8 +515,8 @@ void _c_int00(void)
     memoryInit( (uint32)((uint32)1U << 1U)    /* DMA RAM */
               | (uint32)((uint32)1U << 2U)    /* VIM RAM */
               | (uint32)((uint32)1U << 5U)    /* CAN1 RAM */
-              | (uint32)((uint32)1U << 6U)    /* CAN2 RAM */
-              | (uint32)((uint32)1U << 10U)   /* CAN3 RAM */
+              | (uint32)((uint32)0U << 6U)    /* CAN2 RAM */
+              | (uint32)((uint32)0U << 10U)   /* CAN3 RAM */
               | (uint32)((uint32)1U << 8U)    /* ADC1 RAM */
               | (uint32)((uint32)1U << 14U)   /* ADC2 RAM */
               | (uint32)((uint32)1U << 3U)    /* HET1 RAM */
@@ -578,16 +568,6 @@ void _c_int00(void)
 
     can1ParityCheck();
     
-/* USER CODE BEGIN (64) */
-/* USER CODE END */
-
-    can2ParityCheck();
-    
-/* USER CODE BEGIN (65) */
-/* USER CODE END */
-
-    can3ParityCheck();
-    
 /* USER CODE BEGIN (66) */
 /* USER CODE END */
 
@@ -607,31 +587,11 @@ void _c_int00(void)
     { 
     }/* Wait */                 
     /* wait for MibSPI1 RAM to complete initialization */
-/*SAFETYMCUSW 28 D MR:NA <APPROVED> "Hardware status bit read check" */
-    while ((mibspiREG3->FLG & 0x01000000U) == 0x01000000U)
-    { 
-    }/* Wait */                 
-    /* wait for MibSPI3 RAM to complete initialization */ 
-/*SAFETYMCUSW 28 D MR:NA <APPROVED> "Hardware status bit read check" */
-    while ((mibspiREG5->FLG & 0x01000000U) == 0x01000000U)
-    { 
-    }/* Wait */                 
-    /* wait for MibSPI5 RAM to complete initialization */
 
 /* USER CODE BEGIN (69) */
 /* USER CODE END */
 
     mibspi1ParityCheck();
-    
-/* USER CODE BEGIN (70) */
-/* USER CODE END */
-
-    mibspi3ParityCheck();
-    
-/* USER CODE BEGIN (71) */
-/* USER CODE END */
-    
-    mibspi5ParityCheck();
     
 
 /* USER CODE BEGIN (72) */
