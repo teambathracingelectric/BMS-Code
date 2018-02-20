@@ -14,15 +14,15 @@
 ******************************************************************************/
 
 
+#include <pl455.hpp>
 #include "string.h"
+#include "hal_stdtypes.h"
 
 #include "gio.h"
 #include "sci.h"
 #include "rti.h"
 #include "reg_rti.h"
 
-#include "pl455.h"
-//#include "datatypes.h"
 
 extern int UART_RX_RDY;
 extern int RTI_TIMEOUT;
@@ -30,7 +30,7 @@ extern int RTI_TIMEOUT;
 // internal function prototype
 uint16 CRC16(uint8 *pBuf, uint16 nLen);
 
-void CommClear(void)
+void pl455_c::CommClear(void)
 {
 	int baudRate;
 	baudRate = sciREG->BRS;
@@ -42,9 +42,9 @@ void CommClear(void)
 	delayus(baudRate * 2); // ~= 1/BAUDRATE/16*(155+1)*1.01
 	sciInit();
 	sciSetBaudrate(sciREG, BAUDRATE);
-}
+};
 
-void CommReset(void)
+void pl455_c::CommReset(void)
 {
 	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
 	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
@@ -53,102 +53,30 @@ void CommReset(void)
 	delayus(200); // should cover any possible baud rate
 	sciInit();
 	sciSetBaudrate(sciREG, BAUDRATE);
-}
+};
 
-void ResetPL455()
+void pl455_c::Reset()
 {
 //	ResetUart(1);
-}
+};
 
-void WakePL455()
+void pl455_c::Wakeup()
 {
 	// toggle wake signal
 	gioSetBit(gioPORTA, 0, 0); // assert wake (active low)
 	delayus(10);
 	gioToggleBit(gioPORTA, 0); // deassert wake
-}
+};
 
-boolean GetFaultStat()
+boolean pl455_c::GetFaultStat()
 {
 
 	if (!gioGetBit(gioPORTA, 1))
 		return 0;
 	return 1;
-}
+};
 
-sint32  WriteReg(uint8 bID, uint16 wAddr, uint64 dwData, uint8 bLen, uint8 bWriteType)
-{
-	uint8 bRes = 0;
-	uint8 bBuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-	switch(bLen)
-	{
-	case 1:
-		bBuf[0] =  dwData & 0x00000000000000FF;
-		bRes = WriteFrame(bID, wAddr, bBuf, 1, bWriteType);
-		break;
-	case 2:
-		bBuf[0] = (dwData & 0x000000000000FF00) >> 8;
-		bBuf[1] =  dwData & 0x00000000000000FF;
-		bRes = WriteFrame(bID, wAddr, bBuf, 2, bWriteType);
-		break;
-	case 3:
-		bBuf[0] = (dwData & 0x0000000000FF0000) >> 16;
-		bBuf[1] = (dwData & 0x000000000000FF00) >> 8;
-		bBuf[2] =  dwData & 0x00000000000000FF;
-		bRes = WriteFrame(bID, wAddr, bBuf, 3, bWriteType);
-		break;
-	case 4:
-		bBuf[0] = (dwData & 0x00000000FF000000) >> 24;
-		bBuf[1] = (dwData & 0x0000000000FF0000) >> 16;
-		bBuf[2] = (dwData & 0x000000000000FF00) >> 8;
-		bBuf[3] =  dwData & 0x00000000000000FF;
-		bRes = WriteFrame(bID, wAddr, bBuf, 4, bWriteType);
-		break;
-	case 5:
-		bBuf[0] = (dwData & 0x000000FF00000000) >> 32;
-		bBuf[1] = (dwData & 0x00000000FF000000) >> 24;
-		bBuf[2] = (dwData & 0x0000000000FF0000) >> 16;
-		bBuf[3] = (dwData & 0x000000000000FF00) >> 8;
-		bBuf[4] =  dwData & 0x00000000000000FF;
-		bRes = WriteFrame(bID, wAddr, bBuf, 5, bWriteType);
-		break;
-	case 6:
-		bBuf[0] = (dwData & 0x0000FF0000000000) >> 40;
-		bBuf[1] = (dwData & 0x000000FF00000000) >> 32;
-		bBuf[2] = (dwData & 0x00000000FF000000) >> 24;
-		bBuf[3] = (dwData & 0x0000000000FF0000) >> 16;
-		bBuf[4] = (dwData & 0x000000000000FF00) >> 8;
-		bBuf[5] =  dwData & 0x00000000000000FF;
-		bRes = WriteFrame(bID, wAddr, bBuf, 6, bWriteType);
-		break;
-	case 7:
-		bBuf[0] = (dwData & 0x00FF000000000000) >> 48;
-		bBuf[1] = (dwData & 0x0000FF0000000000) >> 40;
-		bBuf[2] = (dwData & 0x000000FF00000000) >> 32;
-		bBuf[3] = (dwData & 0x00000000FF000000) >> 24;
-		bBuf[4] = (dwData & 0x0000000000FF0000) >> 16;
-		bBuf[5] = (dwData & 0x000000000000FF00) >> 8;
-		bBuf[6] =  dwData & 0x00000000000000FF;;
-		bRes = WriteFrame(bID, wAddr, bBuf, 7, bWriteType);
-		break;
-	case 8:
-		bBuf[0] = (dwData & 0xFF00000000000000) >> 56;
-		bBuf[1] = (dwData & 0x00FF000000000000) >> 48;
-		bBuf[2] = (dwData & 0x0000FF0000000000) >> 40;
-		bBuf[3] = (dwData & 0x000000FF00000000) >> 32;
-		bBuf[4] = (dwData & 0x00000000FF000000) >> 24;
-		bBuf[5] = (dwData & 0x0000000000FF0000) >> 16;
-		bBuf[6] = (dwData & 0x000000000000FF00) >> 8;
-		bBuf[7] =  dwData & 0x00000000000000FF;
-		bRes = WriteFrame(bID, wAddr, bBuf, 8, bWriteType);
-		break;
-	default:
-		break;
-	}
-	return bRes;
-}
-
-sint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWriteType)
+uint32 pl455_c::WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWriteType)
 {
 	int	   bPktLen = 0;
 	uint8   pFrame[32];
@@ -190,9 +118,82 @@ sint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWr
 	sciSend(sciREG, bPktLen, pFrame);
 
 	return bPktLen;
-}
+};
 
-sint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTimeOut)
+uint32 pl455_c::WriteReg(uint8 bID, uint16 wAddr, uint64 dwData, uint8 bLen, uint8 bWriteType)
+{
+	uint8 bRes = 0;
+	uint8 bBuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+	switch(bLen)
+	{
+	case 1:
+		bBuf[0] =  dwData & 0x00000000000000FF;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 1, bWriteType);
+		break;
+	case 2:
+		bBuf[0] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[1] =  dwData & 0x00000000000000FF;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 2, bWriteType);
+		break;
+	case 3:
+		bBuf[0] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[1] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[2] =  dwData & 0x00000000000000FF;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 3, bWriteType);
+		break;
+	case 4:
+		bBuf[0] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[1] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[2] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[3] =  dwData & 0x00000000000000FF;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 4, bWriteType);
+		break;
+	case 5:
+		bBuf[0] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[1] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[2] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[3] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[4] =  dwData & 0x00000000000000FF;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 5, bWriteType);
+		break;
+	case 6:
+		bBuf[0] = (dwData & 0x0000FF0000000000) >> 40;
+		bBuf[1] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[2] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[3] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[4] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[5] =  dwData & 0x00000000000000FF;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 6, bWriteType);
+		break;
+	case 7:
+		bBuf[0] = (dwData & 0x00FF000000000000) >> 48;
+		bBuf[1] = (dwData & 0x0000FF0000000000) >> 40;
+		bBuf[2] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[3] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[4] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[5] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[6] =  dwData & 0x00000000000000FF;;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 7, bWriteType);
+		break;
+	case 8:
+		bBuf[0] = (dwData & 0xFF00000000000000) >> 56;
+		bBuf[1] = (dwData & 0x00FF000000000000) >> 48;
+		bBuf[2] = (dwData & 0x0000FF0000000000) >> 40;
+		bBuf[3] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[4] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[5] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[6] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[7] =  dwData & 0x00000000000000FF;
+		bRes = pl455.WriteFrame(bID, wAddr, bBuf, 8, bWriteType);
+		break;
+	default:
+		break;
+	}
+	return bRes;
+};
+
+
+uint32 pl455_c::ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTimeOut)
 {
 	sint32   bRes = 0;
 	uint8  bRX[8];
@@ -236,9 +237,9 @@ sint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTime
 		break;
 	}
 	return bRes;
-}
+};
 
-sint32  ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn)
+uint32 pl455_c::ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn)
 {
 	uint8 bReturn = buint8ToReturn - 1;
 
@@ -246,9 +247,9 @@ sint32  ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn)
 		return 0;
 
 	return WriteFrame(bID, wAddr, &bReturn, 1, FRMWRT_SGL_R);
-}
+};
 
-sint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
+uint32 pl455_c::WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
 {
 	uint16 wCRC = 0, wCRC16;
 	uint8 bBuf[132];
@@ -300,10 +301,10 @@ sint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
 	memcpy(pFrame, bBuf, bRxDataLen + 4);
 
 	return bRxDataLen + 1;
-}
+};
 
 // Big endian / Little endian conversion
-uint16  B2SWORD(uint16 wIN)
+uint16 pl455_c::B2SWORD(uint16 wIN)
 {
 	uint16 wOUT = 0;
 
@@ -311,9 +312,9 @@ uint16  B2SWORD(uint16 wIN)
 	wOUT |= (wIN & 0xFF00) >> 8;
 
 	return wOUT;
-}
+};
 
-uint32 B2SDWORD(uint32 dwIN)
+uint32 pl455_c::B2SDWORD(uint32 dwIN)
 {
 	uint32 dwOUT = 0;
 
@@ -323,9 +324,9 @@ uint32 B2SDWORD(uint32 dwIN)
 	dwOUT |= (dwIN & 0xFF00) >> 8;
 
 	return dwOUT;
-}
+};
 
-uint32 B2SINT24(uint32 dwIN24)
+uint32 pl455_c::B2SINT24(uint32 dwIN24)
 {
 	uint32 dwOUT = 0;
 
@@ -334,7 +335,7 @@ uint32 B2SINT24(uint32 dwIN24)
 	dwOUT |=  dwIN24 & 0x00FF >> 8;
 
 	return dwOUT;
-}
+};
 
 // CRC16 for PL455
 // ITU_T polynomial: x^16 + x^15 + x^2 + 1
@@ -385,18 +386,18 @@ uint16 CRC16(uint8 *pBuf, uint16 nLen)
 	}
 
 	return wCRC;
-}
+};
 
 void delayms(uint16 ms) {
 	  volatile unsigned int delayval;
 	  delayval = ms * 8400;   // 8400 are about 1ms
 	  while(delayval--);
-}
+};
 
 void delayus(uint16 us) {
 	  static volatile unsigned int delayval;
 	  delayval = us * 9;
 	  while(delayval--);
-}
+};
 //EOF
 

@@ -47,11 +47,26 @@
 
 /* Include Files */
 
+#include <pl455.hpp>
 #include "sys_common.h"
 
 /* USER CODE BEGIN (1) */
-//#include "pl455.h"
 #include "gio.h"
+#include "sci.h"
+#include "rti.h"
+#include "sys_vim.h"
+
+#define  TSIZE1 10
+uint8  TEXT1[TSIZE1]= {'H','E','R','C','U','L','E','S',' ',' '};
+#define  TSIZE2 18
+uint8  TEXT2[TSIZE2]= {'M','I','C','R','O','C','O','N','T','R','O','L','L','E','R','S',' ',' '};
+#define  TSIZE3 19
+uint8  TEXT3[TSIZE3]= {'T','E','X','A','S',' ','I','N','S','T','R','U','M','E','N','T','S','\n','\r'};
+
+void sciDisplayText(sciBASE_t *sci, uint8 *text, uint32 length);
+void wait(uint32 time);
+
+#define UART sciREG
 /* USER CODE END */
 
 /** @fn void main(void)
@@ -63,28 +78,30 @@
 */
 
 /* USER CODE BEGIN (2) */
-void delayus(uint16 us) {
-	  static volatile unsigned int delayval;
-	  delayval = us * 9;
-	  while(delayval--);
-}
+int UART_RX_RDY = 0;
+int RTI_TIMEOUT = 0;
 /* USER CODE END */
 
 int main(void)
 {
 /* USER CODE BEGIN (3) */
-
-//	systemInit();
+	// Initialise based on HalCoGen configuration
 	gioInit();
+	sciInit();
+//	sciSetBaudrate(sciREG, BAUDRATE);
+	rtiInit();
+	vimInit();
 
-	while(1)
-	{// Run test code to see if GPIO works
-		delayus(500);
-		gioToggleBit(gioPORTA, 0); // toggle wakeup signal
-		delayus(500);
-		gioToggleBit(gioPORTB, 0); // toggle BMS-OK signal
-	}
+	_enable_IRQ();
 
+	while(1)        /* continious desplay        */
+	{
+//		WakePL455();							/* tested working */
+		sciDisplayText(UART,&TEXT1[0],TSIZE1);   /* send text code 1 */
+		sciDisplayText(UART,&TEXT2[0],TSIZE2);   /* send text code 2 */
+		sciDisplayText(UART,&TEXT3[0],TSIZE3);   /* send text code 3 */
+		wait(200);
+	};
 /* USER CODE END */
 
     return 0;
@@ -92,4 +109,18 @@ int main(void)
 
 
 /* USER CODE BEGIN (4) */
+void sciDisplayText(sciBASE_t *sci, uint8 *text,uint32 length)
+{
+    while(length--)
+    {
+        while ((UART->FLR & 0x4) == 4); /* wait until busy */
+        sciSendByte(UART,*text++);      /* send out text   */
+    };
+}
+
+
+void wait(uint32 time)
+{
+    time--;
+}
 /* USER CODE END */
