@@ -97,14 +97,15 @@ int main(void)
 
 	_enable_IRQ();
 
-	pl455 =  pl455_ctor();
+
 
 	while(1)        /* continious desplay        */
 	{
-		pl455.ForceWakeup();
-		sciDisplayText(UART,&TEXT1[0],TSIZE1);   /* send text code 1 */
-		sciDisplayText(UART,&TEXT2[0],TSIZE2);   /* send text code 2 */
-		sciDisplayText(UART,&TEXT3[0],TSIZE3);   /* send text code 3 */
+		pl455 =  pl455_ctor();
+//		pl455.ForceWakeup();
+//		sciDisplayText(UART,&TEXT1[0],TSIZE1);   /* send text code 1 */
+//		sciDisplayText(UART,&TEXT2[0],TSIZE2);   /* send text code 2 */
+//		sciDisplayText(UART,&TEXT3[0],TSIZE3);   /* send text code 3 */
 		wait(200);
 	};
 /* USER CODE END */

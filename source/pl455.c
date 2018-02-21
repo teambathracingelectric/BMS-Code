@@ -695,8 +695,13 @@ pl455_main_t pl455_ctor(void) {
 	main.MaskCheckSumFault = MaskCheckSumFault;
 	main.PowerAllDown = PowerAllDown;
 
-	// Initialise slave variables etc
-	main.numBoards = TOTALBOARDS;
+	// Initialise slave and setup parameters etc
+	main.ClearComms();
+	main.ResetComms();
+	main.ForceWakeup();
+	main.MaskCheckSumFault();
+	main.ClearAllFaults();
+	main.numBoards = main.AutoAddress();
 
 	return main;
 }
