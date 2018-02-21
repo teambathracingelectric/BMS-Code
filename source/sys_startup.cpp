@@ -88,9 +88,9 @@ void _c_int00(void);
 /* USER CODE BEGIN (4) */
 /* USER CODE END */
 
-#pragma CODE_STATE(_c_int00, 32)
-#pragma INTERRUPT(_c_int00, RESET)
-#pragma WEAK(_c_int00)
+#pragma CODE_STATE(32)
+#pragma INTERRUPT(RESET)
+#pragma WEAK
 
 /* SourceId : STARTUP_SourceId_001 */
 /* DesignId : STARTUP_DesignId_001 */

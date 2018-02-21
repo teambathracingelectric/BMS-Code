@@ -54,7 +54,7 @@
 *
 *    This function is called if there is a self test fail with appropriate flag
 */
-#pragma WEAK(selftestFailNotification)
+#pragma WEAK
 void selftestFailNotification(uint32 flag)
 {
 
@@ -2695,7 +2695,7 @@ void errata_PBIST_4(void)
 *   This function is called before memoryInit in the startup
 *
 */
-#pragma WEAK(enableParity)
+#pragma WEAK
 void enableParity(void)
 {
     DMA_PARCR = 0xAU;                      /* Enable DMA RAM parity */
@@ -2716,7 +2716,7 @@ void enableParity(void)
 *   This function is called after memoryInit in the startup
 *
 */
-#pragma WEAK(disableParity)
+#pragma WEAK
 void disableParity(void)
 {
     DMA_PARCR = 0x5U;                      /* Disable DMA RAM parity */

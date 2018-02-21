@@ -53,9 +53,9 @@
 /* USER CODE BEGIN (1) */
 /* USER CODE END */
 
-#pragma CODE_STATE(phantomInterrupt, 32)
-#pragma INTERRUPT(phantomInterrupt, IRQ)
-#pragma WEAK(phantomInterrupt)
+#pragma CODE_STATE(32)
+#pragma INTERRUPT(IRQ)
+#pragma WEAK
 
 void phantomInterrupt(void)
 {

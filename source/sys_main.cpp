@@ -47,10 +47,12 @@
 
 /* Include Files */
 
-#include <pl455.hpp>
+#include <pl455.h>
 #include "sys_common.h"
 
 /* USER CODE BEGIN (1) */
+//#define __cplusplus
+
 #include "gio.h"
 #include "sci.h"
 #include "rti.h"

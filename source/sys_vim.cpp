@@ -753,9 +753,9 @@ void vimGetConfigValue(vim_config_reg_t *config_reg, config_value_type_t type)
 }
 
 
-#pragma CODE_STATE(vimParityErrorHandler, 32)
-#pragma INTERRUPT(vimParityErrorHandler, IRQ)
-#pragma WEAK(vimParityErrorHandler)
+#pragma CODE_STATE(32)
+#pragma INTERRUPT(IRQ)
+#pragma WEAK
 
 /* SourceId : VIM_SourceId_006 */
 /* DesignId : VIM_DesignId_006 */
