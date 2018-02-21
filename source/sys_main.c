@@ -47,7 +47,6 @@
 
 /* Include Files */
 
-#include <pl455.hpp>
 #include "sys_common.h"
 
 /* USER CODE BEGIN (1) */
@@ -55,6 +54,7 @@
 #include "sci.h"
 #include "rti.h"
 #include "sys_vim.h"
+#include "pl455.h"
 
 #define  TSIZE1 10
 uint8  TEXT1[TSIZE1]= {'H','E','R','C','U','L','E','S',' ',' '};
@@ -85,6 +85,9 @@ int RTI_TIMEOUT = 0;
 int main(void)
 {
 /* USER CODE BEGIN (3) */
+	// Initialise Variables
+	pl455_main_t pl455; // Main slave call function structure
+
 	// Initialise based on HalCoGen configuration
 	gioInit();
 	sciInit();
@@ -94,9 +97,11 @@ int main(void)
 
 	_enable_IRQ();
 
+	pl455 =  pl455_ctor();
+
 	while(1)        /* continious desplay        */
 	{
-//		WakePL455();							/* tested working */
+		pl455.ForceWakeup();
 		sciDisplayText(UART,&TEXT1[0],TSIZE1);   /* send text code 1 */
 		sciDisplayText(UART,&TEXT2[0],TSIZE2);   /* send text code 2 */
 		sciDisplayText(UART,&TEXT3[0],TSIZE3);   /* send text code 3 */
