@@ -18,17 +18,19 @@
 /*****************************************************************************/
 /* Structure functions definitions */
 
-void ResetPL455();
-void WakePL455();
+uint16 ReadSiliconRevision(void);
+void ResetPL455(void);
+void WakePL455(void);
 void CommClear(void);
 void CommReset(void);
-boolean GetFaultStat();
+boolean GetFaultStat(void);
 void ForceWakeup(void);
 void PowerAllDown(void);
 void MaskCheckSumFault(void);
 void ClearAllFaults(void);
 uint8 AutoAddress(void);
 void EnableAllComs(void);
+void BroadcastSampleandSend(uint8 bFrames);
 
 /*****************************************************************************/
 /* Private function definitions */
@@ -241,9 +243,15 @@ uint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut);
 
 extern int UART_RX_RDY;
 extern int RTI_TIMEOUT;
+//extern sciBASE_t * SLAVE_UART;
 
 /*****************************************************************************/
 /* Structure Function Descriptions */
+
+uint16 ReadSiliconRevision(void)
+{
+	return 0;// ReadReg(0, SREV_REG, void * pData, uint8 bLen, uint32 dwTimeOut)
+}
 
 void ResetPL455()
 {
@@ -259,29 +267,29 @@ void WakePL455()
 	delayus(1000);
 }
 
-void CommClear(void)
+void CommClear()
 {
 	int baudRate;
-	baudRate = sciREG->BRS;
+	baudRate = SLAVE_UART->BRS;
 
-	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	sciREG->PIO3 &= ~(1U << 2U); // set output to low
+	SLAVE_UART->GCR1 &= ~(1U << 7U); // put SCI into reset
+	SLAVE_UART->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	SLAVE_UART->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(baudRate * 2); // ~= 1/BAUDRATE/16*(155+1)*1.01
 	sciInit();
-	sciSetBaudrate(sciREG, BAUDRATE);
+	sciSetBaudrate(SLAVE_UART, BAUDRATE);
 }
 
-void CommReset(void)
+void CommReset()
 {
-	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	sciREG->PIO3 &= ~(1U << 2U); // set output to low
+	SLAVE_UART->GCR1 &= ~(1U << 7U); // put SCI into reset
+	SLAVE_UART->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	SLAVE_UART->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(200); // should cover any possible baud rate
 	sciInit();
-	sciSetBaudrate(sciREG, BAUDRATE);
+	sciSetBaudrate(SLAVE_UART, BAUDRATE);
 }
 
 boolean GetFaultStat()
@@ -348,6 +356,13 @@ void EnableAllComs(void)
 {
 	// Enable all communication interfaces on all boards in the stack (section 1.2.1)
 	WriteReg(0, COMCONFIG_REG, 0x10F8, COMCONFIG_LEN, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces on all boards in stack
+}
+
+void BroadcastSampleandSend(uint8 bFrames)
+{
+	// Send broadcast request to all boards to sample and send results (section 3.2)
+	WriteReg(0, CMD_REG, 0x02, CMD_LEN, FRMWRT_ALL_NR); // send sync sample command
+	WaitRespFrame(&bFrames, 81, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
 }
 
 /*****************************************************************************/
@@ -464,7 +479,7 @@ uint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWr
 	*pBuf++ = (wCRC & 0xFF00) >> 8;
 	bPktLen += 2;
 
-	sciSend(sciREG, bPktLen, pFrame);
+	sciSend(SLAVE_UART, bPktLen, pFrame);
 
 	return bPktLen;
 }
@@ -533,14 +548,14 @@ uint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
 
 	memset(bBuf, 0, sizeof(bBuf));
 
-	sciEnableNotification(sciREG, SCI_RX_INT);
+	sciEnableNotification(SLAVE_UART, SCI_RX_INT);
 	rtiEnableNotification(rtiNOTIFICATION_COMPARE1);
 	 /* rtiNOTIFICATION_COMPARE0 = 1ms
 	 *  rtiNOTIFICATION_COMPARE1 = 5ms
 	 *  rtiNOTIFICATION_COMPARE2 = 8ms
 	 *  rtiNOTIFICATION_COMPARE3 = 10ms
 	 */
-	sciReceive(sciREG, bLen, bBuf);
+	sciReceive(SLAVE_UART, bLen, bBuf);
 	rtiResetCounter(rtiCOUNTER_BLOCK0);
 	rtiStartCounter(rtiCOUNTER_BLOCK0);
 
@@ -682,7 +697,10 @@ pl455_main_t pl455_ctor(void) {
 	// Initialise Structure
 	pl455_main_t main;
 
+//	main.UART = sciREG;
+
 	// Setup function pointers
+	main.ReadSiliconRevision = ReadSiliconRevision;
 	main.ClearComms = CommClear;
 	main.GetFaultStat = GetFaultStat;
 	main.Reset = ResetPL455;
@@ -694,6 +712,7 @@ pl455_main_t pl455_ctor(void) {
 	main.EnableAllComs = EnableAllComs;
 	main.MaskCheckSumFault = MaskCheckSumFault;
 	main.PowerAllDown = PowerAllDown;
+	main.BroadcastSampleandSend = BroadcastSampleandSend;
 
 	// Initialise slave and setup parameters etc
 	main.ClearComms();

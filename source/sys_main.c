@@ -66,7 +66,7 @@ uint8  TEXT3[TSIZE3]= {'T','E','X','A','S',' ','I','N','S','T','R','U','M','E','
 void sciDisplayText(sciBASE_t *sci, uint8 *text, uint32 length);
 void wait(uint32 time);
 
-#define UART sciREG
+//#define SLAVE_UART sciREG
 /* USER CODE END */
 
 /** @fn void main(void)
@@ -86,7 +86,10 @@ int main(void)
 {
 /* USER CODE BEGIN (3) */
 	// Initialise Variables
-	pl455_main_t pl455; // Main slave call function structure
+//	uint8 bFrame[132];
+
+	// Main slave call function structure
+	pl455_main_t pl455;
 
 	// Initialise based on HalCoGen configuration
 	gioInit();
@@ -97,16 +100,17 @@ int main(void)
 
 	_enable_IRQ();
 
-
+	pl455 =  pl455_ctor();
 
 	while(1)        /* continious desplay        */
 	{
-		pl455 =  pl455_ctor();
 //		pl455.ForceWakeup();
 //		sciDisplayText(UART,&TEXT1[0],TSIZE1);   /* send text code 1 */
 //		sciDisplayText(UART,&TEXT2[0],TSIZE2);   /* send text code 2 */
 //		sciDisplayText(UART,&TEXT3[0],TSIZE3);   /* send text code 3 */
 		wait(200);
+
+		pl455.BroadcastSampleandSend(pl455.bFrames);
 	};
 /* USER CODE END */
 
@@ -119,8 +123,8 @@ void sciDisplayText(sciBASE_t *sci, uint8 *text,uint32 length)
 {
     while(length--)
     {
-        while ((UART->FLR & 0x4) == 4); /* wait until busy */
-        sciSendByte(UART,*text++);      /* send out text   */
+        while ((sci->FLR & 0x4) == 4); /* wait until busy */
+        sciSendByte(sci,*text++);      /* send out text   */
     };
 }
 

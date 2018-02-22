@@ -28,6 +28,7 @@
 // Define pl455 globals defines
 #define TOTALBOARDS	16
 #define BAUDRATE 250000
+#define SLAVE_UART ((sciBASE_t *)0xFFF7E500U)
 
 // Define pl455 global functions
 void delayms(uint16 ms);
@@ -39,6 +40,10 @@ void delayus(uint16 us);
 typedef struct pl455_main_s{
 // Define public call functions
 	uint8 numBoards;
+	uint8 bFrames[132];
+	uint16 SiliconRevision;
+//	sciBASE_t (*UART);
+	uint16 (*ReadSiliconRevision)(void);
 	void (*Reset)(void);
 	void (*Wakeup)(void);
 	void (*ClearComms)(void);
@@ -55,6 +60,7 @@ typedef struct pl455_main_s{
 //	void *SetInternalSamplePeriod(uint16 period);
 //	void *SetOversampleRate(uint16 rate);
 //	boolean *ClearCheckFaults(void);
+	void (*BroadcastSampleandSend)(uint8 bFrames);
 } pl455_main_t;
 
 
