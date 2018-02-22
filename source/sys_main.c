@@ -109,6 +109,10 @@ int main(void)
 
 	sciReceive(sciREG, 1, (uint8 *)&command);
 
+	sciSend(scilinREG, 21, (uint8 *)"Please press a key!\r\n");
+
+	sciReceive(scilinREG, 1, (uint8 *)&command);
+
 	while(1)        /* continious desplay        */
 	{
 //		pl455.ForceWakeup();
