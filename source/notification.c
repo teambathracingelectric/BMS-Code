@@ -65,6 +65,10 @@
 #include "sys_dma.h"
 
 /* USER CODE BEGIN (0) */
+
+extern int UART_RX_RDY;
+extern int RTI_TIMEOUT;
+
 /* USER CODE END */
 #pragma WEAK(esmGroup1Notification)
 void esmGroup1Notification(uint32 channel)
@@ -111,6 +115,10 @@ void rtiNotification(uint32 notification)
 {
 /*  enter user code between the USER CODE BEGIN and USER CODE END. */
 /* USER CODE BEGIN (9) */
+	/** - Clear all pending interrupts */
+	//rtiREG1->INTFLAG = 0x0007000FU;
+
+	RTI_TIMEOUT = 1;
 /* USER CODE END */
 }
 
@@ -197,6 +205,8 @@ void sciNotification(sciBASE_t *sci, uint32 flags)
 {
 /*  enter user code between the USER CODE BEGIN and USER CODE END. */
 /* USER CODE BEGIN (29) */
+	UART_RX_RDY = 1;
+
 /* USER CODE END */
 }
 

@@ -17,57 +17,39 @@
 #ifndef PL455_H_
 #define PL455_H_
 
-#include "hal_stdtypes.h"
-#include "string.h"
+#include "datatypes.h"
 
-#include "gio.h"
-#include "sci.h"
-#include "rti.h"
-#include "reg_rti.h"
+// User defines
+#define FRMWRT_SGL_R	0x00 // single device write with response
+#define FRMWRT_SGL_NR	0x10 // single device write without response
+#define FRMWRT_GRP_R	0x20 // group broadcast with response
+#define FRMWRT_GRP_NR	0x30 // group broadcast without response
+#define FRMWRT_ALL_R	0x60 // general broadcast with response
+#define FRMWRT_ALL_NR	0x70 // general broadcast without response
 
-// Define pl455 globals defines
-#define TOTALBOARDS	16
+#define TOTALBOARDS	0
 #define BAUDRATE 250000
-#define SLAVE_UART ((sciBASE_t *)0xFFF7E500U)
 
-// Define pl455 global functions
+// Function Prototypes
+void ResetPL455();
+void WakePL455();
+void CommClear(void);
+void CommReset(void);
+BOOL GetFaultStat();
+
+uint16  B2SWORD(uint16 wIN);
+uint32 B2SDWORD(uint32 dwIN);
+uint32 B2SINT24(uint32 dwIN24);
+
+int  WriteReg(BYTE bID, uint16 wAddr, uint64 dwData, BYTE bLen, BYTE bWriteType);
+int  ReadReg(BYTE bID, uint16 wAddr, void * pData, BYTE bLen, uint32 dwTimeOut);
+
+int  WriteFrame(BYTE bID, uint16 wAddr, BYTE * pData, BYTE bLen, BYTE bWriteType);
+int  ReadFrameReq(BYTE bID, uint16 wAddr, BYTE bByteToReturn);
+int  WaitRespFrame(BYTE *pFrame, BYTE bLen, uint32 dwTimeOut);
+
 void delayms(uint16 ms);
 void delayus(uint16 us);
-
-//typedef void (*pVoidFuncVoid)(void);
-//typedef boolean (*pBoolFuncVoid)(void);
-
-typedef struct pl455_main_s{
-// Define public call functions
-	uint8 numBoards;
-	uint8 bFrames[132];
-	uint16 SiliconRevision;
-//	sciBASE_t (*UART);
-	uint16 (*ReadSiliconRevision)(void);
-	void (*Reset)(void);
-	void (*Wakeup)(void);
-	void (*ClearComms)(void);
-	void (*ResetComms)(void);
-	boolean (*GetFaultStat)(void);
-	void (*ForceWakeup)(void);
-	void (*PowerAllDown)(void);
-	void (*MaskCheckSumFault)(void);
-	void (*ClearAllFaults)(void);
-	uint8 (*AutoAddress)(void);
-	void (*EnableAllComs)(void);
-//	void *ConfigureStackComms(void);
-//	void *SetMuxDelay(uint16 delay);
-//	void *SetInternalSamplePeriod(uint16 period);
-//	void *SetOversampleRate(uint16 rate);
-//	boolean *ClearCheckFaults(void);
-	void (*BroadcastSampleandSend)(uint8 bFrames);
-} pl455_main_t;
-
-
-
-pl455_main_t pl455_ctor(void);
-
-
 
 #endif /* PL455_H_ */
 //EOF

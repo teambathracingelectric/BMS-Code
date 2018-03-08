@@ -251,7 +251,7 @@ typedef struct rti_config_reg
 
 
 /* Configuration registers initial value */
-#define RTI_GCTRL_CONFIGVALUE	 ((uint32)((uint32)0x0U << 16U) | 0x00000000U)
+#define RTI_GCTRL_CONFIGVALUE	 ((uint32)((uint32)0xAU << 16U) | 0x00000000U)
 #define RTI_TBCTRL_CONFIGVALUE   0x00000000U
 #define RTI_CAPCTRL_CONFIGVALUE  (0U | 0U)
 #define RTI_COMPCTRL_CONFIGVALUE (0x00001000U | 0x00000100U | 0x00000000U | 0x00000000U)

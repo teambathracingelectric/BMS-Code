@@ -78,7 +78,7 @@ void rtiInit(void)
     /** @b Initialize @b RTI1: */
 
     /** - Setup NTU source, debug options and disable both counter blocks */
-    rtiREG1->GCTRL = (uint32)((uint32)0x0U << 16U) | 0x00000000U;
+    rtiREG1->GCTRL = (uint32)((uint32)0xAU << 16U) | 0x00000000U;
 
     /** - Setup timebase for free running counter 0 */
     rtiREG1->TBCTRL = 0x00000000U;

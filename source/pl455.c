@@ -13,244 +13,46 @@
 **
 ******************************************************************************/
 
+
+#include "string.h"
+
+#include "gio.h"
+#include "sci.h"
+#include "rti.h"
+#include "reg_rti.h"
+
 #include "pl455.h"
-
-/*****************************************************************************/
-/* Structure functions definitions */
-
-uint16 ReadSiliconRevision(void);
-void ResetPL455(void);
-void WakePL455(void);
-void CommClear(void);
-void CommReset(void);
-boolean GetFaultStat(void);
-void ForceWakeup(void);
-void PowerAllDown(void);
-void MaskCheckSumFault(void);
-void ClearAllFaults(void);
-uint8 AutoAddress(void);
-void EnableAllComs(void);
-void BroadcastSampleandSend(uint8 bFrames);
-
-/*****************************************************************************/
-/* Private function definitions */
-
-uint16 CRC16(uint8 *pBuf, int nLen);
-
-uint16 B2SWORD(uint16 wIN);
-uint32 B2SDWORD(uint32 dwIN);
-uint32 B2SINT24(uint32 dwIN24);
-
-uint32  WriteReg(uint8 bID, uint16 wAddr, uint64 dwData, uint8 bLen, uint8 bWriteType);
-uint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTimeOut);
-
-uint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWriteType);
-uint32  ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn);
-uint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut);
-
-/*****************************************************************************/
-/* Private Definitions */
-
-// Write Type definitions
-#define FRMWRT_SGL_R	0x00 // single device write with response
-#define FRMWRT_SGL_NR	0x10 // single device write without response
-#define FRMWRT_GRP_R	0x20 // group broadcast with response
-#define FRMWRT_GRP_NR	0x30 // group broadcast without response
-#define FRMWRT_ALL_R	0x60 // general broadcast with response
-#define FRMWRT_ALL_NR	0x70 // general broadcast without response
-
-// Register Addresses
-#define SREV_REG		0x00 // Silicon Revision - R
-#define	SREV_LEN		2
-#define	CMD_REG			0x02 // Command - W
-#define CMD_LEN			1
-#define CHANNELS_REG	0x03 // Command channel select - R/W
-#define	CHANNELS_LEN	4
-#define	OVERSMPL_REG	0x07 // Command averaging (oversampling) - R/W
-#define OVERSMPL_LEN	1
-#define ADDR_REG		0x0A // Device address - R/W
-#define	ADDR_LEN		1
-#define	GROUP_ID_REG	0x0B // (Device) Group Identifier - R/W
-#define GROUP_ID_LEN	1
-#define DEV_CTRL_REG	0x0C // Device control - R/W
-#define	DEV_CTRL_LEN	1
-#define	NCHAN_REG		0x0D // Number of channels enabled for conversion - R/W
-#define NCHAN_LEN		1
-#define DEVCONFIG_REG	0x0E // Device configuration - R/W
-#define	DEVCONFIG_LEN	1
-#define	PWRCONFIG_REG	0x0F // Power configuration - R/W
-#define PWRCONFIG_LEN	1
-#define COMCONFIG_REG	0x10 // Communications configuration - R/W
-#define	COMCONFIG_LEN	2
-#define	TXHOLDOFF_REG	0x12 // UART Transmitter holdoff - R/W
-#define TXHOLDOFF_LEN	1
-#define CBCONFIG_REG	0x13 // Cell balancing (equalization) configuration - R/W
-#define	CBCONFIG_LEN	1
-#define	CBENBL_REG		0x14 // Cell balancing enables - R/W
-#define CBENBL_LEN		2
-#define TSTCONFIG_REG	0x1E // Built-In Self-Test (BIST) configuration - R/W
-#define	TSTCONFIG_LEN	2
-#define	TESTCTRL_REG	0x20 // BIST control - R/W
-#define TESTCTRL_LEN	2
-#define TEST_ADC_REG	0x22 // ADC BIST control - R/W
-#define	TEST_ADC_LEN	3
-#define	TESTAUXPU_REG	0x25 // Test control—AUX pull-up resistors - R/W
-#define TESTAUXPU_LEN	1
-#define CTO_REG			0x28 // Communications time-out - R/W
-#define	CTO_LEN			1
-#define	CTO_CNT_REG		0x29 // Communications time-out counter - R/W
-#define CTO_CNT_LEN		3
-#define AM_PER_REG		0x32 // Auto-monitor period - R/W
-#define	AM_PER_LEN		1
-#define	AM_CHAN_REG		0x33 // Auto-monitor channel select - R/W
-#define AM_CHAN_LEN		4
-#define AM_OSMPL_REG	0x37 // Auto-monitor averaging - R/W
-#define	AM_OSMPL_LEN	1
-#define	SMPL_DLY1_REG	0x3D // Initial sampling delay - R/W
-#define SMPL_DLY1_LEN	1
-#define CELL_SPER_REG	0x3E // Cell and die temperature measurement period - R/W
-#define	CELL_SPER_LEN	1
-#define	AUX_SPER_REG	0x3F // AUX channels sampling period - R/W
-#define AUX_SPER_LEN	4
-#define TEST_SPER_REG	0x43 // ADC test sampling period - R/W
-#define	TEST_SPER_LEN	2
-#define	SHDN_STS_REG	0x50 // Shutdown recovery status - R
-#define SHDN_STS_LEN	1
-#define STATUS_REG		0x51 // Device status - R/W
-#define	STATUS_LEN		1
-#define	FAULT_SUM_REG	0x52 // Fault summary - R/W
-#define FAULT_SUM_LEN	4
-#define FAULT_UV_REG	0x54 // Undervoltage faults - R/W
-#define	FAULT_UV_LEN	4
-#define	FAULT_OV_REG	0x56 // Overvoltage faults - R/W
-#define FAULT_OV_LEN	4
-#define FAULT_AUX_REG	0x58 // AUX threshold exceeded faults - R/W
-#define	FAULT_AUX_LEN	4
-#define	FAULT_2UV_REG	0x5A // Comparator UV faults - R/W
-#define FAULT_2UV_LEN	4
-#define FAULT_2OV_REG	0x5C // Comparator OV faults - R/W
-#define	FAULT_2OV_LEN	4
-#define	FAULT_COM_REG	0x5E // Communication faults - R/W
-#define FAULT_COM_LEN	4
-#define FAULT_SYS_REG	0x60 // System fault - R/W
-#define	FAULT_SYS_LEN	1
-#define	FAULT_DEV_REG	0x61 // Device fault - R/W
-#define FAULT_DEV_LEN	2
-#define FAULT_GPI_REG	0x63 // General purpose input (GPIO) fault - R/W
-#define	FAULT_GPI_LEN	1
-#define	MASK_COMM_REG	0x68 // Communications FAULT mask register - R/W
-#define MASK_COMM_LEN	2
-#define MASK_SYS_REG	0x6A // System FAULT mask register - R/W
-#define	MASK_SYS_LEN	1
-#define	MASK_DEV_REG	0x6B // Chip FAULT mask register - R/W
-#define MASK_DEV_LEN	2
-#define FO_CTRL_REG		0x6E // FAULT output control - R/W
-#define	FO_CTRL_LEN		2
-#define	GPIO_DIR_REG	0x78 // GPIO direction control - R/W
-#define GPIO_DIR_LEN	1
-#define GPIO_OUT_REG	0x79 // GPIO output control - R/W
-#define	GPIO_OUT_LEN	1
-#define	GPIO_PU_REG		0x7A // GPIO pull-up resistor control - R/W
-#define GPIO_PU_LEN		1
-#define GPIO_PD_REG		0x7B // GPIO pull-down resistor control - R/W
-#define	GPIO_PD_LEN		1
-#define	GPIO_IN_REG		0x7C // GPIO input value - R
-#define GPIO_IN_LEN		1
-#define GP_FLT_IN_REG	0x7D // GPIO input 0/1 FAULT assertion state - R/W
-#define	GP_FLT_IN_LEN	1
-#define	MAGIC1_REG		0x82 // "Magic" value enables EEPROM write - W
-#define MAGIC1_LEN		4
-#define COMP_UV_REG		0x8C // Comparator undervoltage threshold - R/W
-#define	COMP_UV_LEN		1
-#define	COMP_OV_REG		0x8D // Comparator overvoltage threshold - R/W
-#define COMP_OV_LEN		1
-#define CELL_UV_REG		0x8E // Cell undervoltage threshold - R/W
-#define	CELL_UV_LEN		2
-#define	CELL_OV_REG		0x90 // Cell overvoltage threshold - R/W
-#define CELL_OV_LEN		2
-#define AUX0_UV_REG		0x92 // AUX0 undervoltage threshold - R/W
-#define	AUX0_UV_LEN		2
-#define	AUX0_OV_REG		0x94 // AUX0 overvoltage threshold - R/W
-#define AUX0_OV_LEN		2
-#define AUX1_UV_REG		0x96 // AUX1 undervoltage threshold - R/W
-#define	AUX1_UV_LEN		2
-#define	AUX1_OV_REG		0x98 // AUX1 overvoltage threshold - R/W
-#define AUX1_OV_LEN		2
-#define AUX2_UV_REG		0x9A // AUX2 undervoltage threshold - R/W
-#define	AUX2_UV_LEN		2
-#define	AUX2_OV_REG		0x9C // AUX2 overvoltage threshold - R/W
-#define AUX2_OV_LEN		2
-#define AUX3_UV_REG		0x9E // AUX3 undervoltage threshold - R/W
-#define	AUX3_UV_LEN		2
-#define	AUX3_OV_REG		0xA0 // AUX3 overvoltage threshold - R/W
-#define AUX3_OV_LEN		2
-#define AUX4_UV_REG		0xA2 // AUX4 undervoltage threshold - R/W
-#define	AUX4_UV_LEN		2
-#define	AUX4_OV_REG		0xA4 // AUX4 overvoltage threshold - R/W
-#define AUX4_OV_LEN		2
-#define AUX5_UV_REG		0xA6 // AUX5 undervoltage threshold - R/W
-#define	AUX5_UV_LEN		2
-#define	AUX5_OV_REG		0xA8 // AUX5 overvoltage threshold - R/W
-#define AUX5_OV_LEN		2
-#define AUX6_UV_REG		0xAA // AUX6 undervoltage threshold - R/W
-#define	AUX6_UV_LEN		2
-#define	AUX6_OV_REG		0xAC // AUX6 overvoltage threshold - R/W
-#define AUX6_OV_LEN		2
-#define AUX7_UV_REG		0xAE // AUX7 undervoltage threshold - R/W
-#define	AUX7_UV_LEN		2
-#define	AUX7_OV_REG		0xB0 // AUX7 overvoltage threshold - R/W
-#define AUX7_OV_LEN		2
-#define LOT_NUM_REG		0xBE // Device Lot Number -  R
-#define	LOT_NUM_LEN		8
-#define	SER_NUM_REG		0xC6 // Device Serial Number - R
-#define SER_NUM_LEN		2
-#define SCRATCH_REG		0xC8 // User-defined data - R/W
-#define	SCRATCH_LEN		8
-#define	VSOFFSET_REG	0xD2 // ADC voltage offset correction - R/W
-#define VSOFFSET_LEN	1
-#define VSGAIN_REG		0xD3 // ADC voltage gain correction - R/W
-#define	VSGAIN_LEN		1
-#define	AX0OFFSET_REG	0xD4 // AUX0 ADC offset correction - R/W
-#define AX0OFFSET_LEN	2
-#define AX1OFFSET_REG	0xD6 // AUX1 ADC offset correction - R/W
-#define	AX1OFFSET_LEN	2
-#define	AX2OFFSET_REG	0xD8 // AUX2 ADC offset correction - R/W
-#define AX2OFFSET_LEN	2
-#define AX3OFFSET_REG	0xDA // AUX3 ADC offset correction - R/W
-#define	AX3OFFSET_LEN	2
-#define	AX4OFFSET_REG	0xDC // AUX4 ADC offset correction - R/W
-#define AX4OFFSET_LEN	2
-#define	AX5OFFSET_REG	0xDE // AUX5 ADC offset correction - R/W
-#define AX5OFFSET_LEN	2
-#define AX6OFFSET_REG	0xE0 // AUX6 ADC offset correction - R/W
-#define	AX6OFFSET_LEN	2
-#define	AX7OFFSET_REG	0xE2 // AUX7 ADC offset correction - R/W
-#define AX7OFFSET_LEN	2
-#define TSTR_ECC_REG	0xE6 // ECC Test Results - R
-#define	TSTR_ECC_LEN	8
-#define	CSUM_REG		0xF0 // Saved checksum value - R/W
-#define CSUM_LEN		4
-#define CSUM_RSLT_REG	0xF4 // Checksum Readout - R
-#define	CSUM_RSLT_LEN	4
-#define	TEST_CSUM_REG	0xF8 // Checksum Test Result - R
-#define TEST_CSUM_LEN	2
-#define EE_BURN_REG		0xFA // EEPROM Burn Count; up-counter - R
-#define	EE_BURN_LEN		1
-#define	MAGIC2_REG		0xFC // "Magic" value enables EEPROM write - W
-#define MAGIC2_LEN		4
-
-/*****************************************************************************/
+#include "datatypes.h"
 
 extern int UART_RX_RDY;
 extern int RTI_TIMEOUT;
-//extern sciBASE_t * SLAVE_UART;
 
-/*****************************************************************************/
-/* Structure Function Descriptions */
+// internal function prototype
+uint16 CRC16(BYTE *pBuf, int nLen);
 
-uint16 ReadSiliconRevision(void)
+void CommClear(void)
 {
-	return 0;// ReadReg(0, SREV_REG, void * pData, uint8 bLen, uint32 dwTimeOut)
+	int baudRate;
+	baudRate = sciREG->BRS;
+
+	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
+	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	sciREG->PIO3 &= ~(1U << 2U); // set output to low
+
+	delayus(baudRate * 2); // ~= 1/BAUDRATE/16*(155+1)*1.01
+	sciInit();
+	sciSetBaudrate(sciREG, BAUDRATE);
+}
+
+void CommReset(void)
+{
+	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
+	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	sciREG->PIO3 &= ~(1U << 2U); // set output to low
+
+	delayus(200); // should cover any possible baud rate
+	sciInit();
+	sciSetBaudrate(sciREG, BAUDRATE);
 }
 
 void ResetPL455()
@@ -262,37 +64,30 @@ void WakePL455()
 {
 	// toggle wake signal
 	gioSetBit(gioPORTA, 0, 0); // assert wake (active low)
-	delayus(1000);
+	delayus(10);
 	gioToggleBit(gioPORTA, 0); // deassert wake
-	delayus(1000);
+
+//	//initial wake
+//	gioSetBit(gioPORTA, 0, 0); // assert wake (active low)
+//	delayms(24);
+//	gioSetBit(gioPORTA, 0, 1); // de-assert wake (set high)
+//	delayus(40);
+
+//	gioSetBit(gioPORTA,0,1); // reset low
+//	delayms(10);
+//	int i;
+//	for (i = 0; i < 8; i++)
+//	{
+//		//	gioToggleBit(gioPORTA, 0); // deassert wake
+//		gioSetBit(gioPORTA, 0, 0); // assert wake (active low)
+//		delayms(2);
+//		gioSetBit(gioPORTA,0,1);
+//		delayms(10);
+//	}
+
 }
 
-void CommClear()
-{
-	int baudRate;
-	baudRate = SLAVE_UART->BRS;
-
-	SLAVE_UART->GCR1 &= ~(1U << 7U); // put SCI into reset
-	SLAVE_UART->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	SLAVE_UART->PIO3 &= ~(1U << 2U); // set output to low
-
-	delayus(baudRate * 2); // ~= 1/BAUDRATE/16*(155+1)*1.01
-	sciInit();
-	sciSetBaudrate(SLAVE_UART, BAUDRATE);
-}
-
-void CommReset()
-{
-	SLAVE_UART->GCR1 &= ~(1U << 7U); // put SCI into reset
-	SLAVE_UART->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	SLAVE_UART->PIO3 &= ~(1U << 2U); // set output to low
-
-	delayus(200); // should cover any possible baud rate
-	sciInit();
-	sciSetBaudrate(SLAVE_UART, BAUDRATE);
-}
-
-boolean GetFaultStat()
+BOOL GetFaultStat()
 {
 
 	if (!gioGetBit(gioPORTA, 1))
@@ -300,78 +95,10 @@ boolean GetFaultStat()
 	return 1;
 }
 
-void ForceWakeup(void)
-{
-// Wake all devices
-	// The wake tone will awaken any device that is already in shutdown and the pwrdown will shutdown any device
-	// that is already awake. The least number of times to sequence wake and pwrdown will be half the number of
-	// boards to cover the worst case combination of boards already awake or shutdown.
-	uint8 nDev_ID;
-
-	for(nDev_ID = 0; nDev_ID < TOTALBOARDS>>1; nDev_ID++) {
-		WriteReg(nDev_ID, DEV_CTRL_REG, 0x40, DEV_CTRL_LEN, FRMWRT_ALL_NR);	// send out broadcast pwrdown command
-		delayms(5); //~5ms
-		WakePL455();
-		delayms(5); //~5ms
-	};
-}
-
-void PowerAllDown(void)
-{
-	uint8 nDev_ID;
-	for(nDev_ID = 0; nDev_ID < TOTALBOARDS>>1; nDev_ID++) {
-		WriteReg(nDev_ID, DEV_CTRL_REG, 0x40, DEV_CTRL_LEN, FRMWRT_ALL_NR);	// send out broadcast pwrdown command
-	}
-}
-
-void MaskCheckSumFault(void)
-{
-	// Mask Customer Checksum Fault bit
-	WriteReg(0, MASK_DEV_REG, 0x8000, MASK_DEV_LEN, FRMWRT_ALL_NR); // clear all fault summary flags
-}
-
-void ClearAllFaults(void)
-{
-	// Clear all faults
-	WriteReg(0, FAULT_SUM_REG, 0xFFC0, FAULT_SUM_LEN, FRMWRT_ALL_NR);		// clear all fault summary flags
-	WriteReg(0, STATUS_REG, 0x38, STATUS_LEN, FRMWRT_ALL_NR); // clear fault flags in the system status register
-}
-
-uint8 AutoAddress(void)
-{
-	uint8 nDev_ID;
-	// Auto-address all boards (section 1.2.2)
-	WriteReg(0, DEVCONFIG_REG, 0x19, DEVCONFIG_LEN, FRMWRT_ALL_NR); // set auto-address mode on all boards
-	WriteReg(0, DEV_CTRL_REG, 0x08, DEV_CTRL_LEN, FRMWRT_ALL_NR); // enter auto address mode on all boards, the next write to this ID will be its address
-
-	// Set addresses for all boards in daisy-chain (section 1.2.3)
-	for (nDev_ID = 0; nDev_ID < TOTALBOARDS; nDev_ID++)
-	{
-		WriteReg(nDev_ID, ADDR_REG, nDev_ID, ADDR_LEN, FRMWRT_ALL_NR); // send address to each board
-	}
-
-	return nDev_ID;
-}
-void EnableAllComs(void)
-{
-	// Enable all communication interfaces on all boards in the stack (section 1.2.1)
-	WriteReg(0, COMCONFIG_REG, 0x10F8, COMCONFIG_LEN, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces on all boards in stack
-}
-
-void BroadcastSampleandSend(uint8 bFrames)
-{
-	// Send broadcast request to all boards to sample and send results (section 3.2)
-	WriteReg(0, CMD_REG, 0x02, CMD_LEN, FRMWRT_ALL_NR); // send sync sample command
-	WaitRespFrame(&bFrames, 81, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
-}
-
-/*****************************************************************************/
-/* Private Function descriptions */
-
-uint32 WriteReg(uint8 bID, uint16 wAddr, uint64 dwData, uint8 bLen, uint8 bWriteType)
+int  WriteReg(BYTE bID, uint16 wAddr, uint64 dwData, BYTE bLen, BYTE bWriteType)
 {
 	int bRes = 0;
-	uint8 bBuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+	BYTE bBuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 	switch(bLen)
 	{
 	case 1:
@@ -440,11 +167,11 @@ uint32 WriteReg(uint8 bID, uint16 wAddr, uint64 dwData, uint8 bLen, uint8 bWrite
 	return bRes;
 }
 
-uint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWriteType)
+int  WriteFrame(BYTE bID, uint16 wAddr, BYTE * pData, BYTE bLen, BYTE bWriteType)
 {
 	int	   bPktLen = 0;
-	uint8   pFrame[32];
-	uint8 * pBuf = pFrame;
+	BYTE   pFrame[32];
+	BYTE * pBuf = pFrame;
 	uint16   wCRC;
 
 	if (bLen == 7 || bLen > 8)
@@ -479,15 +206,15 @@ uint32  WriteFrame(uint8 bID, uint16 wAddr, uint8 * pData, uint8 bLen, uint8 bWr
 	*pBuf++ = (wCRC & 0xFF00) >> 8;
 	bPktLen += 2;
 
-	sciSend(SLAVE_UART, bPktLen, pFrame);
+	sciSend(sciREG, bPktLen, pFrame);
 
 	return bPktLen;
 }
 
-uint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTimeOut)
+int  ReadReg(BYTE bID, uint16 wAddr, void * pData, BYTE bLen, uint32 dwTimeOut)
 {
 	int   bRes = 0;
-	uint8  bRX[8];
+	BYTE  bRX[8];
 
 	memset(bRX, 0, sizeof(bRX));
 	switch(bLen)
@@ -496,7 +223,7 @@ uint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTime
 		bRes = ReadFrameReq(bID, wAddr, 1);
 		bRes = WaitRespFrame(bRX, 4, dwTimeOut);
 		if (bRes == 1)
-			*((uint8 *)pData) = bRX[1] & 0x00FF;
+			*((BYTE *)pData) = bRX[1] & 0x00FF;
 		else
 			bRes = 0;
 		break;
@@ -530,9 +257,9 @@ uint32  ReadReg(uint8 bID, uint16 wAddr, void * pData, uint8 bLen, uint32 dwTime
 	return bRes;
 }
 
-uint32 ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn)
+int  ReadFrameReq(BYTE bID, uint16 wAddr, BYTE bByteToReturn)
 {
-	uint8 bReturn = buint8ToReturn - 1;
+	BYTE bReturn = bByteToReturn - 1;
 
 	if (bReturn > 127)
 		return 0;
@@ -540,22 +267,22 @@ uint32 ReadFrameReq(uint8 bID, uint16 wAddr, uint8 buint8ToReturn)
 	return WriteFrame(bID, wAddr, &bReturn, 1, FRMWRT_SGL_R);
 }
 
-uint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
+int  WaitRespFrame(BYTE *pFrame, BYTE bLen, uint32 dwTimeOut)
 {
 	uint16 wCRC = 0, wCRC16;
-	uint8 bBuf[132];
-	uint8 bRxDataLen;
+	BYTE bBuf[132];
+	BYTE bRxDataLen;
 
 	memset(bBuf, 0, sizeof(bBuf));
 
-	sciEnableNotification(SLAVE_UART, SCI_RX_INT);
+	sciEnableNotification(sciREG, SCI_RX_INT);
 	rtiEnableNotification(rtiNOTIFICATION_COMPARE1);
 	 /* rtiNOTIFICATION_COMPARE0 = 1ms
 	 *  rtiNOTIFICATION_COMPARE1 = 5ms
 	 *  rtiNOTIFICATION_COMPARE2 = 8ms
 	 *  rtiNOTIFICATION_COMPARE3 = 10ms
 	 */
-	sciReceive(SLAVE_UART, bLen, bBuf);
+	sciReceive(sciREG, bLen, bBuf);
 	rtiResetCounter(rtiCOUNTER_BLOCK0);
 	rtiStartCounter(rtiCOUNTER_BLOCK0);
 
@@ -575,7 +302,7 @@ uint32  WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
 
 	delayms(dwTimeOut);
 
-	// rebuild bBuf to have bLen as first uint8 to use the same CRC function as TX
+	// rebuild bBuf to have bLen as first byte to use the same CRC function as TX
 //	i = bRxDataLen + 3;
 //	while(--i >= 0)
 //	{
@@ -665,7 +392,7 @@ const uint16 crc16_table[256] = {
 	0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
 };
 
-uint16 CRC16(uint8 *pBuf, int nLen)
+uint16 CRC16(BYTE *pBuf, int nLen)
 {
 	uint16 wCRC = 0;
 	int i;
@@ -690,41 +417,5 @@ void delayus(uint16 us) {
 	  delayval = us * 9;
 	  while(delayval--);
 }
-
-
-
-pl455_main_t pl455_ctor(void) {
-	// Initialise Structure
-	pl455_main_t main;
-
-//	main.UART = sciREG;
-
-	// Setup function pointers
-	main.ReadSiliconRevision = ReadSiliconRevision;
-	main.ClearComms = CommClear;
-	main.GetFaultStat = GetFaultStat;
-	main.Reset = ResetPL455;
-	main.ResetComms = CommReset;
-	main.Wakeup = WakePL455;
-	main.ForceWakeup = ForceWakeup;
-	main.AutoAddress = AutoAddress;
-	main.ClearAllFaults = ClearAllFaults;
-	main.EnableAllComs = EnableAllComs;
-	main.MaskCheckSumFault = MaskCheckSumFault;
-	main.PowerAllDown = PowerAllDown;
-	main.BroadcastSampleandSend = BroadcastSampleandSend;
-
-	// Initialise slave and setup parameters etc
-	main.ClearComms();
-	main.ResetComms();
-	main.ForceWakeup();
-	main.MaskCheckSumFault();
-	main.ClearAllFaults();
-	main.numBoards = main.AutoAddress();
-
-	return main;
-}
-
-
 //EOF
 
