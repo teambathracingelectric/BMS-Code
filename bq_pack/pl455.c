@@ -23,58 +23,56 @@
 
 #include "pl455.h"
 
-
+extern boolean UART_RX_RDY;
+extern boolean RTI_TIMEOUT;
 /******************************************************************************/
 /*                       Global functions declaration                          */
 /******************************************************************************/
-void bqInitialiseStack(void)
+void bq_InitialiseStack(void)
 {
 	/** Code examples
 	 * The command sequences below are examples of the message examples in the bq76PL455 Communication Examples document.
 	 * each message example references the section in the document.
 	 */
 
-	sin16 nDev_ID = 0;
+	sint16 nDev_ID = 0;
+	sint32 nRead;
+	sint16 nTopFound;
 	uint8 wTemp;
 
-//	sciEnableNotification(BQ_UART, SCI_RX_INT);
-//	rtiEnableNotification(rtiNOTIFICATION_COMPARE1);
-	 /* rtiNOTIFICATION_COMPARE0 = 1ms
-	 *  rtiNOTIFICATION_COMPARE1 = 5ms
-	 *  rtiNOTIFICATION_COMPARE2 = 8ms
-	 *  rtiNOTIFICATION_COMPARE3 = 10ms
-	 */
 
-	// Wake all devices
+/*************************** Wake all devices *********************************/
 	// The wake tone will awaken any device that is already in shutdown and the pwrdown will shutdown any device
 	// that is already awake. The least number of times to sequence wake and pwrdown will be half the number of
 	// boards to cover the worst case combination of boards already awake or shutdown.
 	for(nDev_ID = 0; nDev_ID < BQ_NUMBER_OF_DEVICES>>1; nDev_ID++) {
-		bq_SendFrame(nDev_ID, DEV_CTRL_REG, 0x40, 1, FRMWRT_ALL_NR);	// send out broadcast pwrdown command
+		bq_WriteReg(nDev_ID, DEV_CTRL_REG, 0x40, 1, FRMWRT_ALL_NR);	// send out broadcast pwrdown command
 		delayms(5); //~5ms
-		WakePL455();
+		bq_Wakeup();
 		delayms(5); //~5ms
 	}
 
+/************************ Auto-Address all boards ******************************/
 	// Mask Customer Checksum Fault bit
-	bq_SendFrame(0, MASK_DEV_REG, 0x8000, 2, FRMWRT_ALL_NR); // clear all fault summary flags
+	bq_WriteReg(0, MASK_DEV_REG, 0x8000, 2, FRMWRT_ALL_NR); // clear all fault summary flags
 
 	// Clear all faults
-	bq_SendFrame(0, FAULT_SUM_REG, 0xFFC0, 2, FRMWRT_ALL_NR);		// clear all fault summary flags
-	bq_SendFrame(0, STATUS_REG, 0x38, 1, FRMWRT_ALL_NR); // clear fault flags in the system status register
+	bq_WriteReg(0, FAULT_SUM_REG, 0xFFC0, 2, FRMWRT_ALL_NR);		// clear all fault summary flags
+	bq_WriteReg(0, STATUS_REG, 0x38, 1, FRMWRT_ALL_NR); // clear fault flags in the system status register
 
 	// Auto-address all boards (section 1.2.2)
-	bq_SendFrame(0, DEVCONFIG_REG, 0x19, 1, FRMWRT_ALL_NR); // set auto-address mode on all boards
-	bq_SendFrame(0, DEV_CTRL_REG, 0x08, 1, FRMWRT_ALL_NR); // enter auto address mode on all boards, the next write to this ID will be its address
+	bq_WriteReg(0, DEVCONFIG_REG, 0x19, 1, FRMWRT_ALL_NR); // set auto-address mode on all boards
+	bq_WriteReg(0, DEV_CTRL_REG, 0x08, 1, FRMWRT_ALL_NR); // enter auto address mode on all boards, the next write to this ID will be its address
 
 	// Set addresses for all boards in daisy-chain (section 1.2.3)
 	for (nDev_ID = 0; nDev_ID < BQ_NUMBER_OF_DEVICES; nDev_ID++)
 	{
-		bq_SendFrame(nDev_ID, ADDR_REG, nDev_ID, 1, FRMWRT_ALL_NR); // send address to each board
+		bq_WriteReg(nDev_ID, ADDR_REG, nDev_ID, 1, FRMWRT_ALL_NR); // send address to each board
 	}
 
+/************************ Setup all devices comms ******************************/
 	// Enable all communication interfaces on all boards in the stack (section 1.2.1)
-	bq_SendFrame(0, COMCONFIG_REG, 0x10F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces on all boards in stack
+	bq_WriteReg(0, COMCONFIG_REG, 0x10F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces on all boards in stack
 
 	/* Change to final baud rate used in the application (set by BAUDRATE define in pl455.h).
 	 * Up to this point, all communication is at 250Kb, as the COMM_RESET done at the initial
@@ -82,7 +80,7 @@ void bqInitialiseStack(void)
 	switch(BQ_BAUDRATE)
 	{
 	case 125000:
-		bq_SendFrame(0, COMCONFIG_REG, 0x00F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
+		bq_WriteReg(0, COMCONFIG_REG, 0x00F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
 		delayms(1);
 		sciSetBaudrate(BQ_UART, BQ_BAUDRATE);
 		break;
@@ -90,12 +88,12 @@ void bqInitialiseStack(void)
 		delayms(1);
 		break;
 	case 500000:
-		bq_SendFrame(0, COMCONFIG_REG, 0x20F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
+		bq_WriteReg(0, COMCONFIG_REG, 0x20F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
 		delayms(1);
 		sciSetBaudrate(BQ_UART, BQ_BAUDRATE);
 		break;
 	case 1000000:
-		bq_SendFrame(0, COMCONFIG_REG, 0x30F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
+		bq_WriteReg(0, COMCONFIG_REG, 0x30F8, 2, FRMWRT_ALL_NR);	// set communications baud rate and enable all interfaces
 		delayms(1);
 		sciSetBaudrate(BQ_UART, BQ_BAUDRATE);
 		break;
@@ -108,7 +106,7 @@ void bqInitialiseStack(void)
 	for (nDev_ID = BQ_NUMBER_OF_DEVICES - 1; nDev_ID >= 0; --nDev_ID)
 	{
 		// read device ID to see if there is a response
-		ReadReg(nDev_ID, ADDR_REG, &wTemp, 1, 1); // 1ms timeout
+		nRead = bq_ReadReg(nDev_ID, ADDR_REG, &wTemp, 1, 1); // 1ms timeout
 
 		if(nRead == 0) // if nothing is read then this board doesn't exist
 			nTopFound = 0;
@@ -121,16 +119,16 @@ void bqInitialiseStack(void)
 					switch(BQ_BAUDRATE)
 						{
 						case 125000:
-							nSent = bq_SendFrame(nDev_ID, 16, 0x0080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
+							bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x0080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
 							break;
 						case 250000:
-							nSent = bq_SendFrame(nDev_ID, 16, 0x1080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
+							bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x1080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
 							break;
 						case 500000:
-							nSent = bq_SendFrame(nDev_ID, 16, 0x2080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
+							bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x2080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
 							break;
 						case 1000000:
-							nSent = bq_SendFrame(nDev_ID, 16, 0x3080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
+							bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x3080, 2, FRMWRT_SGL_NR);	// enable only single-end comm port on board
 							break;
 						}
 				}
@@ -139,16 +137,16 @@ void bqInitialiseStack(void)
 					switch(BQ_BAUDRATE)
 					{
 					case 125000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x0028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x0028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
 						break;
 					case 250000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x1028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x1028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
 						break;
 					case 500000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x2028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x2028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
 						break;
 					case 1000000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x3028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x3028, 2, FRMWRT_SGL_NR);	// enable only comm-low and fault-low for the top board
 						break;
 					}
 					nTopFound = 1;
@@ -161,16 +159,16 @@ void bqInitialiseStack(void)
 					switch(BQ_BAUDRATE)
 					{
 					case 125000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x00D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x00D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
 						break;
 					case 250000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x10D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x10D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
 						break;
 					case 500000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x20D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x20D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
 						break;
 					case 1000000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x30D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x30D0, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high and single-end comm port on bottom board
 						break;
 					}
 				}
@@ -179,16 +177,16 @@ void bqInitialiseStack(void)
 					switch(BQ_BAUDRATE)
 					{
 					case 125000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x0078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x0078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
 						break;
 					case 250000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x1078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x1078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
 						break;
 					case 500000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x2078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x2078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
 						break;
 					case 1000000:
-						nSent = bq_SendFrame(nDev_ID, 16, 0x3078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
+						bq_WriteReg(nDev_ID, COMCONFIG_REG, 0x3078, 2, FRMWRT_SGL_NR);	// enable comm-high, fault-high, comm-low and fault-low on all middle boards
 						break;
 					}
 				}
@@ -197,13 +195,51 @@ void bqInitialiseStack(void)
 	}
 
 	// Clear all faults (section 1.2.7)
-	nSent = bq_SendFrame(0, 82, 0xFFC0, 2, FRMWRT_ALL_NR); // clear all fault summary flags
-	nSent = bq_SendFrame(0, 81, 0x38, 1, FRMWRT_ALL_NR); // clear fault flags in the system status register
+	bq_WriteReg(0, FAULT_SUM_REG, 0xFFC0, 2, FRMWRT_ALL_NR); // clear all fault summary flags
+	bq_WriteReg(0, STATUS_REG, 0x38, 1, FRMWRT_ALL_NR); // clear fault flags in the system status register
 
 	delayms(10);
+
+
+/*************************** Setup AFE *********************************/
+	// Configure AFE (section 2.2.1)
+
+	bq_WriteReg(nDev_ID, SMPL_DLY1_REG, 0x00, 1, FRMWRT_ALL_NR); // set 0 initial delay
+
+	// Configure voltage and internal sample period (section 2.2.2)
+	bq_WriteReg(nDev_ID, CELL_SPER_REG, 0xCC, 1, FRMWRT_ALL_NR); // set 99.92us ADC sampling period
+
+	// Configure the oversampling rate (section 2.2.3)
+	bq_WriteReg(nDev_ID, OVERSMPL_REG, 0x00, 1, FRMWRT_ALL_NR); // set no oversampling period
+
+//	// Clear and check faults (section 2.2.4) --->> Only on first board at the moment, but don't need to use. need to make seperate function
+//	nDev_ID = 0;
+//	bq_WriteReg(nDev_ID, STATUS_REG, 0x38, 1, FRMWRT_SGL_NR); // clear fault flags in the system status register
+//	bq_WriteReg(nDev_ID, FAULT_SUM_REG, 0xFFC0, 2, FRMWRT_SGL_NR); // clear all fault summary flags
+//	nRead = bq_ReadReg(nDev_ID, STATUS_REG, &wTemp, 1, 0); // 0ms timeout
+//	nRead = bq_ReadReg(nDev_ID, FAULT_SUM_REG, &wTemp, 2, 0); // 0ms timeout
+
+//	// Select number of cells and channels to sample (section 2.2.5.1)
+//	nDev_ID = 0;
+//	bq_WriteReg(nDev_ID, NCHAN_REG, 0x10, 1, FRMWRT_SGL_NR); // set number of cells to 16
+//	bq_WriteReg(nDev_ID, CHANNELS_REG, 0xFFFF03C0, 4, FRMWRT_SGL_NR); // select all cell, AUX channels 0 and 1, and internal digital die and internal analog die temperatures
+
+	// Select identical number of cells and channels on all modules simultaneously (section 2.2.5.2)
+	bq_WriteReg(0, NCHAN_REG, 0x10, 1, FRMWRT_ALL_NR); // set number of cells to 16
+	bq_WriteReg(0, CHANNELS_REG, 0xFFFF00C0, 4, FRMWRT_ALL_NR); // select all cell, no AUX channels, and internal digital die and internal analog die temperatures
+
+//	// Set cell over-voltage and cell under-voltage thresholds on a single board (section 2.2.6.1)
+//	nDev_ID = 0;
+//	bq_WriteReg(nDev_ID, 144, 0xD1EC, 2, FRMWRT_SGL_NR); // set OV threshold = 4.1000V
+//	bq_WriteReg(nDev_ID, 142, 0x6148, 2, FRMWRT_SGL_NR); // set UV threshold = 1.9000V
+
+	// Set cell over-voltage and cell under-voltage thresholds on all boards simultaneously (section 2.2.6.2)
+	bq_WriteReg(0, CELL_OV_REG, 0xD1EC, 2, FRMWRT_ALL_NR); // set OV threshold = 4.1000V
+	bq_WriteReg(0, CELL_UV_REG, 0x6148, 2, FRMWRT_ALL_NR); // set UV threshold = 1.9000V
 }
 
-void bqWakeup(void)
+
+void bq_Wakeup(void)
 {
 	// toggle wake signal
 	gioSetBit(gioPORTA, 0, 0); // assert wake (active low)
@@ -211,32 +247,48 @@ void bqWakeup(void)
 	gioToggleBit(gioPORTA, 0); // deassert wake
 }
 
-bq_dev_sample_data_t bqSample(void)
+void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data)
 {
-	// To fill
-	return 0;
+	uint8  nPackets = 2*( 16 + 2 + 1 + 2 ); // 16 vcells, 0 temperatures, 2 internals temps, 1 header, 2 CRC
+	uint8  bFrame[2*( 16 + 2 + 1 + 2 )];
+	uint8 i = 0;
+	sint32 responseReturn;
+
+	// Send broadcast request to all boards to sample and send results (section 3.2)
+	bq_WriteReg(bID, CMD_REG, 0x02, 1, FRMWRT_SGL_NR); // send sync sample command
+	responseReturn = bq_WaitRespFrame(bFrame, nPackets, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+
+	if( responseReturn != 0 ){
+		for(i = 1; i<nPackets-4; i++){
+			data->cell_voltage[i-1] = bFrame[i];
+		}
+		data->internal_digital_temp = bFrame[17];
+		data->internal_analogue_temp = bFrame[18];
+	}
+	else return;
+
 }
 
-void bqShutdown(void)
-{
-
-}
-
-void bqResetStack(void)
-{
-	// To fill
-}
-
-void bqSaveConfig(void)
-{
-	// To fill
-}
-
-uint16 bqGetFaults(void)
-{
-	// To fill
-	return 0;
-}
+//void bq_Shutdown(void)
+//{
+//
+//}
+//
+//void bq_ResetStack(void)
+//{
+//	// To fill
+//}
+//
+//void bq_SaveConfig(void)
+//{
+//	// To fill
+//}
+//
+//uint16 bq_GetFaults(void)
+//{
+//	// To fill
+//	return 0;
+//}
 
 /******************************************************************************/
 /*                       Local functions declaration                          */
@@ -283,115 +335,230 @@ boolean GetFaultStat(void)
 	return 1;
 }
 
-void bq_WriteAll(bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen);
-
-void bq_WriteReg(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen)
-
-void bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen, uint8 ByteToReturn, uint32 dwTimeOut);
-
-
-void bq_SendFrame(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen, bq_write_type_t bWriteType)
+sint32  bq_WriteReg(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen, bq_write_type_t bWriteType)
 {
-	uint8 bPktLen = 0;
-	uint8 sendFrames[16];
-	uint8 * pBuf = sendFrames;
-	uint16   wCRC;
-
-	// Use the pBuf pointer to increment through the sendFrame structure
-	*pBuf = (1 << 7) ||  ((uint8)bWriteType << 4) || (0 << 3) || (bLen - 1); // Initialisation frame
-	*pBuf++ = (uint8)bID; // Device ID
-	*pBuf++ = (uint8)wAddr; // Device Register
-
-	switch(bLen) // Scan through data frames and add to sendsFrames as needed
+	sint32 bRes = 0;
+	uint8 bBuf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+	switch(bLen)
 	{
 	case 1:
-		*pBuf++ =  dwData & 0x00000000000000FF;
+		bBuf[0] =  dwData & 0x00000000000000FF;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 1, bWriteType);
 		break;
 	case 2:
-		*pBuf++ = (dwData & 0x000000000000FF00) >> 8;
-		*pBuf++ =  dwData & 0x00000000000000FF;
+		bBuf[0] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[1] =  dwData & 0x00000000000000FF;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 2, bWriteType);
 		break;
 	case 3:
-		*pBuf++ = (dwData & 0x0000000000FF0000) >> 16;
-		*pBuf++ = (dwData & 0x000000000000FF00) >> 8;
-		*pBuf++ =  dwData & 0x00000000000000FF;
+		bBuf[0] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[1] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[2] =  dwData & 0x00000000000000FF;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 3, bWriteType);
 		break;
 	case 4:
-		*pBuf++ = (dwData & 0x00000000FF000000) >> 24;
-		*pBuf++ = (dwData & 0x0000000000FF0000) >> 16;
-		*pBuf++ = (dwData & 0x000000000000FF00) >> 8;
-		*pBuf++ =  dwData & 0x00000000000000FF;
+		bBuf[0] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[1] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[2] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[3] =  dwData & 0x00000000000000FF;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 4, bWriteType);
 		break;
 	case 5:
-		*pBuf++ = (dwData & 0x000000FF00000000) >> 32;
-		*pBuf++ = (dwData & 0x00000000FF000000) >> 24;
-		*pBuf++ = (dwData & 0x0000000000FF0000) >> 16;
-		*pBuf++ = (dwData & 0x000000000000FF00) >> 8;
-		*pBuf++ =  dwData & 0x00000000000000FF;
+		bBuf[0] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[1] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[2] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[3] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[4] =  dwData & 0x00000000000000FF;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 5, bWriteType);
 		break;
 	case 6:
-		*pBuf++ = (dwData & 0x0000FF0000000000) >> 40;
-		*pBuf++ = (dwData & 0x000000FF00000000) >> 32;
-		*pBuf++ = (dwData & 0x00000000FF000000) >> 24;
-		*pBuf++ = (dwData & 0x0000000000FF0000) >> 16;
-		*pBuf++ = (dwData & 0x000000000000FF00) >> 8;
-		*pBuf++ =  dwData & 0x00000000000000FF;
+		bBuf[0] = (dwData & 0x0000FF0000000000) >> 40;
+		bBuf[1] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[2] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[3] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[4] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[5] =  dwData & 0x00000000000000FF;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 6, bWriteType);
+		break;
+	case 7:
+		bBuf[0] = (dwData & 0x00FF000000000000) >> 48;
+		bBuf[1] = (dwData & 0x0000FF0000000000) >> 40;
+		bBuf[2] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[3] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[4] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[5] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[6] =  dwData & 0x00000000000000FF;;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 7, bWriteType);
 		break;
 	case 8:
-		*pBuf++ = (dwData & 0xFF00000000000000) >> 56;
-		*pBuf++ = (dwData & 0x00FF000000000000) >> 48;
-		*pBuf++ = (dwData & 0x0000FF0000000000) >> 40;
-		*pBuf++ = (dwData & 0x000000FF00000000) >> 32;
-		*pBuf++ = (dwData & 0x00000000FF000000) >> 24;
-		*pBuf++ = (dwData & 0x0000000000FF0000) >> 16;
-		*pBuf++ = (dwData & 0x000000000000FF00) >> 8;
-		*pBuf++ =  dwData & 0x00000000000000FF;
+		bBuf[0] = (dwData & 0xFF00000000000000) >> 56;
+		bBuf[1] = (dwData & 0x00FF000000000000) >> 48;
+		bBuf[2] = (dwData & 0x0000FF0000000000) >> 40;
+		bBuf[3] = (dwData & 0x000000FF00000000) >> 32;
+		bBuf[4] = (dwData & 0x00000000FF000000) >> 24;
+		bBuf[5] = (dwData & 0x0000000000FF0000) >> 16;
+		bBuf[6] = (dwData & 0x000000000000FF00) >> 8;
+		bBuf[7] =  dwData & 0x00000000000000FF;
+		bRes = bq_WriteFrame(bID, wAddr, bBuf, 8, bWriteType);
 		break;
 	default:
-		return;
+		break;
+	}
+	return bRes;
+}
+
+sint32  bq_WriteFrame(uint8 bID, bq_dev_regs_t wAddr, uint8 * pData, uint8 bLen, bq_write_type_t bWriteType)
+{
+	sint32	   bPktLen = 0;
+	uint8   pFrame[32];
+	uint8 * pBuf = pFrame;
+	uint16   wCRC;
+
+	if (bLen == 7 || bLen > 8)
+		return 0;
+
+	memset(pFrame, 0x7F, sizeof(pFrame));
+	if (wAddr > 255)	{
+		*pBuf++ = 0x88 | bWriteType | bLen;	// use 16-bit address
+		if (bWriteType == FRMWRT_SGL_R || bWriteType == FRMWRT_SGL_NR || bWriteType == FRMWRT_GRP_R || bWriteType == FRMWRT_GRP_NR)//(bWriteType != FRMWRT_ALL_NR)// || (bWriteType != FRMWRT_ALL_R))
+		{
+			*pBuf++ = (bID & 0x00FF);
+		}
+		*pBuf++ = (wAddr & 0xFF00) >> 8;
+		*pBuf++ =  wAddr & 0x00FF;
+	}
+	else {
+		*pBuf++ = 0x80 | bWriteType | bLen;	// use 8-bit address
+		if (bWriteType == FRMWRT_SGL_R || bWriteType == FRMWRT_SGL_NR || bWriteType == FRMWRT_GRP_R || bWriteType == FRMWRT_GRP_NR)
+		{
+			*pBuf++ = (bID & 0x00FF);
+		}
+		*pBuf++ = wAddr & 0x00FF;
 	}
 
-	bPktLen = pBuf - sendFrames;
+	while(bLen--)
+		*pBuf++ = *pData++;
 
-	wCRC = CRC16(sendFrames, bPktLen);
+	bPktLen = pBuf - pFrame;
+
+	wCRC = CRC16(pFrame, bPktLen);
 	*pBuf++ = wCRC & 0x00FF;
 	*pBuf++ = (wCRC & 0xFF00) >> 8;
 	bPktLen += 2;
 
-	sciSend(BQ_UART, bPktLen, sendFrames);
+	sciSend(sciREG, bPktLen, pFrame);
+
+	return bPktLen;
 }
 
-
-uint8 * bq_WaitResponse(uint8 ByteToReturn)
+sint32  bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, void * pData, uint8 bLen, uint32 dwTimeOut)
 {
-//	uint32 intFrame;
-	uint8 dBuf[132];
-	uint8 * pdBuf = dBuf;
-	uint8 RxDataLen;
-	uint8 CRC_response[2];
-	uint16 CRC_check;
+	sint32   bRes = 0;
+	uint8  bRX[8];
 
-	*pdBuf = (uint8)(sciReceiveByte(BQ_UART) && 0x000000FF); // put int frame at start of buffer
-
-	if(*pdBuf == (ByteToReturn - 1)){ // Check data length as expected
-		sciReceive(BQ_UART, ByteToReturn, pdBuf++); // Read expected number of data frames into buffer plus 1 (because of int frame)
-		sciReceive(BQ_UART, 2, CRC_response); // CRC response frames
+	memset(bRX, 0, sizeof(bRX));
+	switch(bLen)
+	{
+	case 1:
+		bRes = bq_ReadFrameReq(bID, wAddr, 1);
+		bRes = bq_WaitRespFrame(bRX, 4, dwTimeOut);
+		if (bRes == 1)
+			*((uint8 *)pData) = bRX[1] & 0x00FF;
+		else
+			bRes = 0;
+		break;
+	case 2:
+		bRes = bq_ReadFrameReq(bID, wAddr, 2);
+		bRes = bq_WaitRespFrame(bRX, 5, dwTimeOut);
+		if (bRes == 2)
+			*((uint16 *)pData) = ((uint16)bRX[1] << 8) | (bRX[2] & 0x00FF);
+		else
+			bRes = 0;
+		break;
+	case 3:
+		bRes = bq_ReadFrameReq(bID, wAddr, 3);
+		bRes = bq_WaitRespFrame(bRX, 6, dwTimeOut);
+		if (bRes == 3)
+			*((uint32 *)pData) = ((uint32)bRX[1] << 16) | ((uint16)bRX[2] << 8) | (bRX[3] & 0x00FF);
+		else
+			bRes = 0;
+		break;
+	case 4:
+		bRes = bq_ReadFrameReq(bID, wAddr, 4);
+		bRes = bq_WaitRespFrame(bRX, 7, dwTimeOut);
+		if (bRes == 4)
+			*((uint32 *)pData) = ((uint32)bRX[1] << 24) | ((uint32)bRX[2] << 16) | ((uint16)bRX[3] << 8) | (bRX[4] & 0x00FF);
+		else
+			bRes = 0;
+		break;
+	default:
+		break;
 	}
-	else return 0; // if check fails return 0
+	return bRes;
+}
 
-	RxDataLen = pdBuf - dBuf; // Calculate length of buffered data for calculating CRC
+sint32  bq_ReadFrameReq(uint8 bID, bq_dev_regs_t wAddr, uint8 bByteToReturn)
+{
+	uint8 bReturn = bByteToReturn - 1;
 
-	CRC_check = CRC16(pdBuf, RxDataLen);
+	if (bReturn > 127)
+		return 0;
 
-	if ( (CRC_response[0] == (CRC_check & 0x00FF)) ||
-		 (CRC_response[1] == (CRC_check & 0xFF00)) >> 8){
-	}
-	else return 0; // If CRC check fails return 0
+	return bq_WriteFrame(bID, wAddr, &bReturn, 1, FRMWRT_SGL_R);
+}
 
-	pdBuf = dBuf; // Reset Pointer to start of buffer again
+sint32  bq_WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
+{
+	uint16 wCRC = 0, wCRC16;
+	uint8 bBuf[132];
+	uint8 bRxDataLen;
 
-	return (pdBuf +1); // If checks passed return pointer to data
+	memset(bBuf, 0, sizeof(bBuf));
 
+	sciEnableNotification(BQ_UART, SCI_RX_INT);
+	rtiEnableNotification(rtiNOTIFICATION_COMPARE2);
+	 /* rtiNOTIFICATION_COMPARE0 = 1ms
+	 *  rtiNOTIFICATION_COMPARE1 = 5ms
+	 *  rtiNOTIFICATION_COMPARE2 = 8ms
+	 *  rtiNOTIFICATION_COMPARE3 = 10ms
+	 */
+	sciReceive(sciREG, bLen, bBuf);
+	rtiResetCounter(rtiCOUNTER_BLOCK0);
+	rtiStartCounter(rtiCOUNTER_BLOCK0);
+
+	while(UART_RX_RDY == 0U)
+	{
+		// Check for timeout.
+		if(RTI_TIMEOUT == 1U)
+		{
+			RTI_TIMEOUT = 0;
+			return 0; // timed out
+		}
+	} /* Wait */
+	rtiStopCounter(rtiCOUNTER_BLOCK0);
+
+	UART_RX_RDY = 0;
+	bRxDataLen = bBuf[0];
+
+	delayms(dwTimeOut);
+
+	// rebuild bBuf to have bLen as first BYTE to use the same CRC function as TX
+//	i = bRxDataLen + 3;
+//	while(--i >= 0)
+//	{
+//		bBuf[i + 1] = bBuf[i];
+//	}
+//	bBuf[0] = bRxDataLen;
+
+	wCRC = bBuf[bRxDataLen+2];
+	wCRC |= ((uint16)bBuf[bRxDataLen+3] << 8);
+	wCRC16 = CRC16(bBuf, bRxDataLen+2);
+	if (wCRC != wCRC16)
+		return -1;
+
+	memcpy(pFrame, bBuf, bRxDataLen + 4);
+
+	return bRxDataLen + 1;
 }
 
 // Big endian / Little endian conversion

@@ -55,12 +55,11 @@
 #include "sci.h"
 #include "rti.h"
 #include "sys_vim.h"
-#include "swi_util.h"
 
 #include "pl455.h"
 
-int UART_RX_RDY = 0;
-int RTI_TIMEOUT = 0;
+boolean UART_RX_RDY = 0;
+boolean RTI_TIMEOUT = 0;
 
 /* USER CODE END */
 
@@ -73,16 +72,18 @@ int RTI_TIMEOUT = 0;
 */
 
 /* USER CODE BEGIN (2) */
+bq_dev_sample_data_t sample_data;
 /* USER CODE END */
 
 int main(void)
 {
 /* USER CODE BEGIN (3) */
 
+
+
 //	systemInit();
 	gioInit();
 	sciInit();
-	sciSetBaudrate(sciREG, BAUDRATE);
 	rtiInit();
 	vimInit();
 
@@ -91,17 +92,31 @@ int main(void)
 //	gioSetBit(gioPORTA, 0, 1); // assert wake (active low)
 //	delayus(1000);
 
-	WakePL455();
+	bq_Wakeup();
 
 	CommClear();
 
 	CommReset();
 
+	bq_InitialiseStack();
+
+	while(1){
+//			sciSend(sciREG, 5, send);
+//			nSent = WriteReg(0, 2, 0x00, 1, FRMWRT_ALL_NR); // send sync sample command
+//			nSent = WaitRespFrame(bFrame, 27, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+		bq_Sample_SGL(0, &sample_data);
+
+		delayms(10);
+	}
+
+
+
+
 	// initialize local variables
-	int nSent, nRead, nTopFound = 0;
-	int nDev_ID, nGrp_ID;
-	BYTE  bFrame[132];
-	uint32  wTemp = 0;
+//	int nSent, nRead, nTopFound = 0;
+//	int nDev_ID, nGrp_ID;
+//	BYTE  bFrame[132];
+//	uint32  wTemp = 0;
 
 //	uint8 send[5] = {0xe1, 0x02, 0x02, 0xd0, 0x97};//{225, 2, 2, 208, 151};
 //	char * pSend;
@@ -124,46 +139,7 @@ int main(void)
 
 
 
-//	// Configure AFE (section 2.2.1)
-//
-//	nDev_ID = 0;
-//	nSent = WriteReg(nDev_ID, 60, 0x00, 1, FRMWRT_SGL_NR); // set 0 mux delay
-//	nSent = WriteReg(nDev_ID, 61, 0x00, 1, FRMWRT_SGL_NR); // set 0 initial delay
-//
-//	// Configure voltage and internal sample period (section 2.2.2)
-//	nDev_ID = 0;
-//	nSent = WriteReg(nDev_ID, 62, 0xCC, 1, FRMWRT_SGL_NR); // set 99.92us ADC sampling period
-//
-//	// Configure the oversampling rate (section 2.2.3)
-//	nDev_ID = 0;
-//	nSent = WriteReg(nDev_ID, 7, 0x00, 1, FRMWRT_SGL_NR); // set no oversampling period
-//
-//	// Clear and check faults (section 2.2.4)
-//	nDev_ID = 0;
-//	nSent = WriteReg(nDev_ID, 81, 0x38, 1, FRMWRT_SGL_NR); // clear fault flags in the system status register
-//	nSent = WriteReg(nDev_ID, 82, 0xFFC0, 2, FRMWRT_SGL_NR); // clear all fault summary flags
-//	nRead = ReadReg(nDev_ID, 81, &wTemp, 1, 0); // 0ms timeout
-//	nRead = ReadReg(nDev_ID, 82, &wTemp, 2, 0); // 0ms timeout
-//
-//	// Select number of cells and channels to sample (section 2.2.5.1)
-//	nDev_ID = 0;
-//	nSent = WriteReg(nDev_ID, 13, 0x10, 1, FRMWRT_SGL_NR); // set number of cells to 16
-//	nSent = WriteReg(nDev_ID, 3, 0xFFFF03C0, 4, FRMWRT_SGL_NR); // select all cell, AUX channels 0 and 1, and internal digital die and internal analog die temperatures
-//
-//	// Select identical number of cells and channels on all modules simultaneously (section 2.2.5.2)
-//	nSent = WriteReg(0, 13, 0x10, 1, FRMWRT_ALL_NR); // set number of cells to 16
-//	nSent = WriteReg(0, 3, 0xFFFF03C0, 4, FRMWRT_ALL_NR); // select all cell, AUX channels 0 and 1, and internal digital die and internal analog die temperatures
-//	nSent = WriteReg(0, 13, 0x08, 1, FRMWRT_ALL_NR); // set number of cells to 8
-//	nSent = WriteReg(0, 3, 0x00FF03C0, 4, FRMWRT_ALL_NR); // select all cell channels 1-8, AUX channels 0 and 1, and internal digital die and internal analog die temperatures
-//
-//	// Set cell over-voltage and cell under-voltage thresholds on a single board (section 2.2.6.1)
-//	nDev_ID = 0;
-//	nSent = WriteReg(nDev_ID, 144, 0xD1EC, 2, FRMWRT_SGL_NR); // set OV threshold = 4.1000V
-//	nSent = WriteReg(nDev_ID, 142, 0x6148, 2, FRMWRT_SGL_NR); // set UV threshold = 1.9000V
-//
-//	// Set cell over-voltage and cell under-voltage thresholds on all boards simultaneously (section 2.2.6.2)
-//	nSent = WriteReg(0, 144, 0xD1EC, 2, FRMWRT_ALL_NR); // set OV threshold = 4.1000V
-//	nSent = WriteReg(0, 142, 0x6148, 2, FRMWRT_ALL_NR); // set UV threshold = 1.9000V
+
 //
 //	// Send broadcast request to all boards to sample and send results (section 3.2)
 //	nSent = WriteReg(0, 2, 0x02, 1, FRMWRT_ALL_NR); // send sync sample command
@@ -305,12 +281,6 @@ int main(void)
 //	nSent = WaitRespFrame(bFrame, 14, 0); // 4 bytes data (x2) + packet header (x2) + CRC (x2), 0ms timeout
 
 
-		while(1){
-//			sciSend(sciREG, 5, send);
-			nSent = WriteReg(0, 2, 0x00, 1, FRMWRT_ALL_NR); // send sync sample command
-			nSent = WaitRespFrame(bFrame, 27, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
-			delayms(10);
-		}
 /* USER CODE END */
 
     return 0;

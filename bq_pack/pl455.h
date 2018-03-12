@@ -18,7 +18,7 @@
 #define PL455_H_
 
 /* General Config */
-#define BQ_NUMBER_OF_DEVICES			16
+#define BQ_NUMBER_OF_DEVICES			1
 #define BQ_BAUDRATE 					250000
 #define BQ_UART							(sciBASE_t *)sciREG
 
@@ -147,10 +147,10 @@ typedef enum BQ_WRITE_TYPE
 
 typedef struct BQ_DEV_SAMPLE_DATA
 {
-	uint16 cell_voltage[VOLTAGE_CHANNEL_SELECT];
-	uint16 cell_temp[BQ_AUX_CHANNEL_SELECT];
-	uint16 internal_digital_temp;
-	uint16 internal_analogue_temp;
+	uint8 cell_voltage[16];
+//	uint8 cell_temp[BQ_AUX_CHANNEL_SELECT];
+	uint8 internal_digital_temp;
+	uint8 internal_analogue_temp;
 } bq_dev_sample_data_t;
 
 typedef struct BQ_DEV_COMMANDS
@@ -167,19 +167,19 @@ typedef struct BQ_DEV_COMMANDS
 /******************************************************************************/
 /*                       Global functions declaration                          */
 /******************************************************************************/
-void bqInitialiseStack(void);
-void bqWakeup(void);
-bq_dev_sample_data_t bqSample(void);
-void bqShutdown(void);
-void bqResetStack(void);
-void bqSaveConfig(void);
-uint16 bqGetFaults(void);
+void bq_InitialiseStack(void);
+void bq_Wakeup(void);
+void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data);
+//void bq_Shutdown(void);
+//void bq_ResetStack(void);
+//void bq_SaveConfig(void);
+//uint16 bq_GetFaults(void);
 
 /******************************************************************************/
 /*                       Local functions declaration                          */
 /******************************************************************************/
 void ResetPL455(void);
-void WakePL455(void);
+//void WakePL455(void);
 void CommClear(void);
 void CommReset(void);
 boolean GetFaultStat(void);
@@ -188,13 +188,16 @@ uint16  B2SWORD(uint16 wIN);
 uint32 B2SDWORD(uint32 dwIN);
 uint32 B2SINT24(uint32 dwIN24);
 
-void bq_WriteAll(bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen);
+// Use WriteReg to write to slaves in single and global modes
+sint32  bq_WriteReg(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen, bq_write_type_t bWriteType);
+sint32  bq_WriteFrame(uint8 bID, bq_dev_regs_t wAddr, uint8 * pData, uint8 bLen, bq_write_type_t bWriteType);
 
-void bq_WriteReg(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen);
-void bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen, uint8 ByteToReturn, uint32 dwTimeOut);
+// Use ReadReg to read individual Registers
+sint32  bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, void * pData, uint8 bLen, uint32 dwTimeOut);
+sint32  bq_ReadFrameReq(uint8 bID, bq_dev_regs_t wAddr, uint8 bByteToReturn);
 
-void  bq_SendFrame(uint8 bID, bq_dev_regs_t wAddr, uint64 dwData, uint8 bLen, bq_write_type_t bWriteType);
-uint8 * bq_WaitResponse(uint8 ByteToReturn, uint32 dwTimeOut);
+// Useful if need to read from response data e.g. sample request responses
+sint32  bq_WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut);
 
 void delayms(uint16 ms);
 void delayus(uint16 us);

@@ -90,6 +90,10 @@ typedef enum systemInterrupt
 
 extern void esmHighInterrupt(void);
 extern void phantomInterrupt(void);
+extern void rtiCompare0Interrupt(void);
+extern void rtiCompare1Interrupt(void);
+extern void rtiCompare2Interrupt(void);
+extern void rtiCompare3Interrupt(void);
 extern void linHighLevelInterrupt(void);
 extern void sciHighLevelInterrupt(void);
 extern void sciLowLevelInterrupt(void);
@@ -259,10 +263,10 @@ typedef struct vim_config_reg
 					
 #define VIM_REQMASKSET0_CONFIGVALUE	( (uint32)((uint32)1U << 0U)\
                                     | (uint32)((uint32)1U << 1U)\
-                                    | (uint32)((uint32)0U << 2U)\
-                                    | (uint32)((uint32)0U << 3U)\
-                                    | (uint32)((uint32)0U << 4U)\
-                                    | (uint32)((uint32)0U << 5U)\
+                                    | (uint32)((uint32)1U << 2U)\
+                                    | (uint32)((uint32)1U << 3U)\
+                                    | (uint32)((uint32)1U << 4U)\
+                                    | (uint32)((uint32)1U << 5U)\
                                     | (uint32)((uint32)0U << 6U)\
                                     | (uint32)((uint32)0U << 7U)\
                                     | (uint32)((uint32)0U << 8U)\
