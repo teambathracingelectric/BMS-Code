@@ -205,8 +205,6 @@ void sciNotification(sciBASE_t *sci, uint32 flags)
 {
 /*  enter user code between the USER CODE BEGIN and USER CODE END. */
 /* USER CODE BEGIN (29) */
-	UART_RX_RDY = 1;
-
 /* USER CODE END */
 }
 
