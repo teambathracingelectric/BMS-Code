@@ -18,9 +18,9 @@
 #define PL455_H_
 
 /* General Config */
-#define BQ_NUMBER_OF_DEVICES			1
+#define BQ_NUMBER_OF_DEVICES			16
 #define BQ_BAUDRATE 					250000
-#define BQ_UART							(sciBASE_t *)sciREG
+#define BQ_UART							((sciBASE_t *)sciREG)
 
 //// AFE Config ////
 #define BQ_SAMPLE_DELAY 					0 //ms
@@ -147,10 +147,10 @@ typedef enum BQ_WRITE_TYPE
 
 typedef struct BQ_DEV_SAMPLE_DATA
 {
-	uint8 cell_voltage[16];
-//	uint8 cell_temp[BQ_AUX_CHANNEL_SELECT];
-	uint8 internal_digital_temp;
-	uint8 internal_analogue_temp;
+	uint16 cell_voltage[16];
+//	uint16 cell_temp[BQ_AUX_CHANNEL_SELECT];
+	uint16 internal_digital_temp;
+	uint16 internal_analogue_temp;
 } bq_dev_sample_data_t;
 
 typedef struct BQ_DEV_COMMANDS
@@ -167,9 +167,10 @@ typedef struct BQ_DEV_COMMANDS
 /******************************************************************************/
 /*                       Global functions declaration                          */
 /******************************************************************************/
-void bq_InitialiseStack(void);
+sint32 bq_InitialiseStack(void);
 void bq_Wakeup(void);
 void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data);
+void bq_Sample_ALL(bq_dev_sample_data_t * data);
 //void bq_Shutdown(void);
 //void bq_ResetStack(void);
 //void bq_SaveConfig(void);
@@ -178,6 +179,9 @@ void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data);
 /******************************************************************************/
 /*                       Local functions declaration                          */
 /******************************************************************************/
+
+uint16 bq_sample_to_voltage(uint8 * pFrames);
+
 void ResetPL455(void);
 //void WakePL455(void);
 void CommClear(void);

@@ -87,7 +87,7 @@ void rtiInit(void)
     rtiREG1->CAPCTRL = 0U | 0U;
 
     /** - Setup input source compare 0-3 */
-    rtiREG1->COMPCTRL = 0x00001000U | 0x00000100U | 0x00000000U | 0x00000000U;
+    rtiREG1->COMPCTRL = 0x00000000U | 0x00000000U | 0x00000000U | 0x00000000U;
 
     /** - Reset up counter 0 */
     rtiREG1->CNT[0U].UCx = 0x00000000U;

@@ -28,7 +28,7 @@ extern boolean RTI_TIMEOUT;
 /******************************************************************************/
 /*                       Global functions declaration                          */
 /******************************************************************************/
-void bq_InitialiseStack(void)
+sint32 bq_InitialiseStack(void)
 {
 	/** Code examples
 	 * The command sequences below are examples of the message examples in the bq76PL455 Communication Examples document.
@@ -108,7 +108,9 @@ void bq_InitialiseStack(void)
 		// read device ID to see if there is a response
 		nRead = bq_ReadReg(nDev_ID, ADDR_REG, &wTemp, 1, 1); // 1ms timeout
 
-		if(nRead == 0) // if nothing is read then this board doesn't exist
+//		if(nRead < 0)
+//			return -1;
+		if(nRead <= 0) // if nothing is read then this board doesn't exist
 			nTopFound = 0;
 		else // a response was received
 		{
@@ -226,7 +228,7 @@ void bq_InitialiseStack(void)
 
 	// Select identical number of cells and channels on all modules simultaneously (section 2.2.5.2)
 	bq_WriteReg(0, NCHAN_REG, 0x10, 1, FRMWRT_ALL_NR); // set number of cells to 16
-	bq_WriteReg(0, CHANNELS_REG, 0xFFFF00C0, 4, FRMWRT_ALL_NR); // select all cell, no AUX channels, and internal digital die and internal analog die temperatures
+	bq_WriteReg(0, CHANNELS_REG, 0xFFFF0000, 4, FRMWRT_ALL_NR); // select all cell, no AUX channels, and no temperatures
 
 //	// Set cell over-voltage and cell under-voltage thresholds on a single board (section 2.2.6.1)
 //	nDev_ID = 0;
@@ -236,6 +238,8 @@ void bq_InitialiseStack(void)
 	// Set cell over-voltage and cell under-voltage thresholds on all boards simultaneously (section 2.2.6.2)
 	bq_WriteReg(0, CELL_OV_REG, 0xD1EC, 2, FRMWRT_ALL_NR); // set OV threshold = 4.1000V
 	bq_WriteReg(0, CELL_UV_REG, 0x6148, 2, FRMWRT_ALL_NR); // set UV threshold = 1.9000V
+
+	return 0;
 }
 
 
@@ -249,16 +253,16 @@ void bq_Wakeup(void)
 
 void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data)
 {
-	uint8  nPackets = 2*( 16 + 2 + 1 + 2 ); // 16 vcells, 0 temperatures, 2 internals temps, 1 header, 2 CRC
-	uint8  bFrame[2*( 16 + 2 + 1 + 2 )];
+	uint8  nPackets = ( 16 + 2 + 1 + 2 ); // 16 vcells, 0 temperatures, 2 internals temps, 1 header, 2 CRC
+	uint8  bFrame[( 16 + 2 + 1 + 2 )];
 	uint8 i = 0;
 	sint32 responseReturn;
 
 	// Send broadcast request to all boards to sample and send results (section 3.2)
 	bq_WriteReg(bID, CMD_REG, 0x02, 1, FRMWRT_SGL_NR); // send sync sample command
-	responseReturn = bq_WaitRespFrame(bFrame, nPackets, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+	responseReturn = bq_WaitRespFrame(bFrame, nPackets, 5); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
 
-	if( responseReturn != 0 ){
+	if( responseReturn > 0 ){
 		for(i = 1; i<nPackets-4; i++){
 			data->cell_voltage[i-1] = bFrame[i];
 		}
@@ -267,6 +271,41 @@ void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data)
 	}
 	else return;
 
+}
+
+void bq_Sample_ALL(bq_dev_sample_data_t * data)
+{
+	uint8  nPackets = (2*16) + 1 + 2; // 16 vcells, 0 temperatures, 1 header, 2 CRC
+	uint8  bFrame[(2*16) + 1 + 2];
+	uint8  * pbFrame = bFrame;
+	uint8 i = 0;
+	sint32 responseReturn;
+
+	// Send broadcast request to all boards to sample and send results (section 3.2)
+	bq_WriteReg(0, CMD_REG, 0x00, 1, FRMWRT_ALL_R); // send sync sample command
+	responseReturn = bq_WaitRespFrame(bFrame, nPackets, 5); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+
+	if( responseReturn > 0 ){
+		for(i = 0; i<16; i++){
+			data->cell_voltage[i] = bq_sample_to_voltage(pbFrame + 1 + (2*i));
+		}
+//		data->internal_digital_temp = bq_sample_to_voltage(pbFrame +nPackets-2-3);
+//		data->internal_analogue_temp = bq_sample_to_voltage(pbFrame +nPackets-2-1);
+	}
+	else return;
+
+}
+
+uint16 bq_sample_to_voltage(uint8 * pFrames)
+{
+	uint16 sample = 0;
+	float32 calc = 0;
+
+	sample = ( (*pFrames+1 << 8) & 0xFF00 ) | ( *pFrames & 0x00FF );
+
+	calc = sample*5000/0xFFFF;
+
+	return (uint16)(calc);
 }
 
 //void bq_Shutdown(void)
@@ -300,26 +339,26 @@ uint16 CRC16(uint8 *pBuf, uint16 nLen);
 void CommClear(void)
 {
 	int baudRate;
-	baudRate = sciREG->BRS;
+	baudRate = BQ_UART->BRS;
 
-	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	sciREG->PIO3 &= ~(1U << 2U); // set output to low
+	BQ_UART->GCR1 &= ~(1U << 7U); // put SCI into reset
+	BQ_UART->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	BQ_UART->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(baudRate * 2); // ~= 1/BAUDRATE/16*(155+1)*1.01
 	sciInit();
-	sciSetBaudrate(sciREG, BQ_BAUDRATE);
+	sciSetBaudrate(BQ_UART, BQ_BAUDRATE);
 }
 
 void CommReset(void)
 {
-	sciREG->GCR1 &= ~(1U << 7U); // put SCI into reset
-	sciREG->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
-	sciREG->PIO3 &= ~(1U << 2U); // set output to low
+	BQ_UART->GCR1 &= ~(1U << 7U); // put SCI into reset
+	BQ_UART->PIO0 &= ~(1U << 2U); // disable transmit function - now a GPIO
+	BQ_UART->PIO3 &= ~(1U << 2U); // set output to low
 
 	delayus(200); // should cover any possible baud rate
 	sciInit();
-	sciSetBaudrate(sciREG, BQ_BAUDRATE);
+	sciSetBaudrate(BQ_UART, BQ_BAUDRATE);
 }
 
 void ResetPL455(void)
@@ -446,7 +485,7 @@ sint32  bq_WriteFrame(uint8 bID, bq_dev_regs_t wAddr, uint8 * pData, uint8 bLen,
 	*pBuf++ = (wCRC & 0xFF00) >> 8;
 	bPktLen += 2;
 
-	sciSend(sciREG, bPktLen, pFrame);
+	sciSend(BQ_UART, bPktLen, pFrame);
 
 	return bPktLen;
 }
@@ -465,7 +504,7 @@ sint32  bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, void * pData, uint8 bLen, uin
 		if (bRes == 1)
 			*((uint8 *)pData) = bRX[1] & 0x00FF;
 		else
-			bRes = 0;
+			bRes = -2;
 		break;
 	case 2:
 		bRes = bq_ReadFrameReq(bID, wAddr, 2);
@@ -473,7 +512,7 @@ sint32  bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, void * pData, uint8 bLen, uin
 		if (bRes == 2)
 			*((uint16 *)pData) = ((uint16)bRX[1] << 8) | (bRX[2] & 0x00FF);
 		else
-			bRes = 0;
+			bRes = -2;
 		break;
 	case 3:
 		bRes = bq_ReadFrameReq(bID, wAddr, 3);
@@ -481,7 +520,7 @@ sint32  bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, void * pData, uint8 bLen, uin
 		if (bRes == 3)
 			*((uint32 *)pData) = ((uint32)bRX[1] << 16) | ((uint16)bRX[2] << 8) | (bRX[3] & 0x00FF);
 		else
-			bRes = 0;
+			bRes = -2;
 		break;
 	case 4:
 		bRes = bq_ReadFrameReq(bID, wAddr, 4);
@@ -489,9 +528,10 @@ sint32  bq_ReadReg(uint8 bID, bq_dev_regs_t wAddr, void * pData, uint8 bLen, uin
 		if (bRes == 4)
 			*((uint32 *)pData) = ((uint32)bRX[1] << 24) | ((uint32)bRX[2] << 16) | ((uint16)bRX[3] << 8) | (bRX[4] & 0x00FF);
 		else
-			bRes = 0;
+			bRes = -2;
 		break;
 	default:
+		bRes = -3; // return bLen out of range
 		break;
 	}
 	return bRes;
@@ -516,23 +556,23 @@ sint32  bq_WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
 	memset(bBuf, 0, sizeof(bBuf));
 
 	sciEnableNotification(BQ_UART, SCI_RX_INT);
-	rtiEnableNotification(rtiNOTIFICATION_COMPARE2);
+	rtiEnableNotification(rtiNOTIFICATION_COMPARE3);
 	 /* rtiNOTIFICATION_COMPARE0 = 1ms
 	 *  rtiNOTIFICATION_COMPARE1 = 5ms
 	 *  rtiNOTIFICATION_COMPARE2 = 8ms
 	 *  rtiNOTIFICATION_COMPARE3 = 10ms
 	 */
-	sciReceive(sciREG, bLen, bBuf);
+	sciReceive(BQ_UART, bLen, bBuf);
 	rtiResetCounter(rtiCOUNTER_BLOCK0);
 	rtiStartCounter(rtiCOUNTER_BLOCK0);
 
-	while(UART_RX_RDY == 0U)
+	while(UART_RX_RDY == 0)
 	{
 		// Check for timeout.
-		if(RTI_TIMEOUT == 1U)
+		if(RTI_TIMEOUT == 1)
 		{
 			RTI_TIMEOUT = 0;
-			return 0; // timed out
+			return -2; // timed out error = -2
 		}
 	} /* Wait */
 	rtiStopCounter(rtiCOUNTER_BLOCK0);
@@ -554,7 +594,7 @@ sint32  bq_WaitRespFrame(uint8 *pFrame, uint8 bLen, uint32 dwTimeOut)
 	wCRC |= ((uint16)bBuf[bRxDataLen+3] << 8);
 	wCRC16 = CRC16(bBuf, bRxDataLen+2);
 	if (wCRC != wCRC16)
-		return -1;
+		return -1; // CRC check error = -1
 
 	memcpy(pFrame, bBuf, bRxDataLen + 4);
 

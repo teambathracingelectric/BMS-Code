@@ -72,13 +72,14 @@ boolean RTI_TIMEOUT = 0;
 */
 
 /* USER CODE BEGIN (2) */
-bq_dev_sample_data_t sample_data;
 /* USER CODE END */
 
 int main(void)
 {
 /* USER CODE BEGIN (3) */
-
+	bq_dev_sample_data_t sample_data;
+	uint8 silicon_num[2];
+	sint32 returnCode;
 
 
 //	systemInit();
@@ -104,7 +105,11 @@ int main(void)
 //			sciSend(sciREG, 5, send);
 //			nSent = WriteReg(0, 2, 0x00, 1, FRMWRT_ALL_NR); // send sync sample command
 //			nSent = WaitRespFrame(bFrame, 27, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
-		bq_Sample_SGL(0, &sample_data);
+
+//		returnCode = bq_ReadReg(0, SREV_REG, &silicon_num, 2, 0);
+
+//		bq_Sample_SGL(0, &sample_data);
+		bq_Sample_ALL(&sample_data);
 
 		delayms(10);
 	}
