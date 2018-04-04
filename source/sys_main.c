@@ -77,9 +77,10 @@ boolean RTI_TIMEOUT = 0;
 int main(void)
 {
 /* USER CODE BEGIN (3) */
-	bq_dev_sample_data_t sample_data;
-	uint8 silicon_num[2];
-	sint32 returnCode;
+	bq_stack_data sample_data;
+	uint32  isFault;
+//	uint8 silicon_num[2];
+//	sint32 returnCode;
 
 
 //	systemInit();
@@ -110,6 +111,8 @@ int main(void)
 
 //		bq_Sample_SGL(0, &sample_data);
 		bq_Sample_ALL(&sample_data);
+
+		isFault = sciRxError(BQ_UART);
 
 		delayms(10);
 	}

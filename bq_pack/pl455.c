@@ -206,13 +206,35 @@ sint32 bq_InitialiseStack(void)
 /*************************** Setup AFE *********************************/
 	// Configure AFE (section 2.2.1)
 
-	bq_WriteReg(nDev_ID, SMPL_DLY1_REG, 0x00, 1, FRMWRT_ALL_NR); // set 0 initial delay
+	//(1) Setup the Channels using CHANNELS and NCHAN registers
+	bq_WriteReg(0, NCHAN_REG, 0x10, 1, FRMWRT_ALL_NR); // Set number of cells connected
+		// 16 cells
+	bq_WriteReg(0, CHANNELS_REG, 0xFFFF00C6, 4, FRMWRT_ALL_NR); // Set channels to monitor
+		// 16 vsel, 0 asel, 1 GTSEL, 1 HTSEL, 0 V18SEL, 1 REFSEL, 1 MODULESEL, 0 VMMONSEL
 
-	// Configure voltage and internal sample period (section 2.2.2)
-	bq_WriteReg(nDev_ID, CELL_SPER_REG, 0xCC, 1, FRMWRT_ALL_NR); // set 99.92us ADC sampling period
+	//(2) Over sampling setup / configuration
+	bq_WriteReg(0, OVERSMPL_REG, 0x00, 1, FRMWRT_ALL_NR); // Over sampling register config was: 0b01111010
+		// Resample channel repeatdly, before changing channel
+		// 12.6us averaging period for everything
+		// 4 samples averaging (can do 32, but don't need to for testing)
 
-	// Configure the oversampling rate (section 2.2.3)
-	bq_WriteReg(nDev_ID, OVERSMPL_REG, 0x00, 1, FRMWRT_ALL_NR); // set no oversampling period
+	//(3) Initial Sampling delay config setup
+	bq_WriteReg(0, SMPL_DLY1_REG, 0x00, 1, FRMWRT_ALL_NR); // Initial sampling delay register config
+	bq_WriteReg(0, CELL_SPER_REG, 0x00, 1, FRMWRT_ALL_NR); // Cell sampling delay period register config
+	bq_WriteReg(0, AUX_SPER_REG, 0x00000000, 4, FRMWRT_ALL_NR); // Auxiliary sampling delay period register config
+	bq_WriteReg(0, TEST_SPER_REG, 0x0000, 2, FRMWRT_ALL_NR); // Test sampling delay period register config
+		// No initial sampling delay
+		// Set all sampling delays to 19.9us ... the example code set it to 99.92us?
+
+
+
+//	bq_WriteReg(nDev_ID, SMPL_DLY1_REG, 0x00, 1, FRMWRT_ALL_NR); // set 0 initial delay
+//
+//	// Configure voltage and internal sample period (section 2.2.2)
+//	bq_WriteReg(nDev_ID, CELL_SPER_REG, 0xCC, 1, FRMWRT_ALL_NR); // set 99.92us ADC sampling period
+//
+//	// Configure the oversampling rate (section 2.2.3)
+//	bq_WriteReg(nDev_ID, OVERSMPL_REG, 0x00, 1, FRMWRT_ALL_NR); // set no oversampling period
 
 //	// Clear and check faults (section 2.2.4) --->> Only on first board at the moment, but don't need to use. need to make seperate function
 //	nDev_ID = 0;
@@ -227,8 +249,8 @@ sint32 bq_InitialiseStack(void)
 //	bq_WriteReg(nDev_ID, CHANNELS_REG, 0xFFFF03C0, 4, FRMWRT_SGL_NR); // select all cell, AUX channels 0 and 1, and internal digital die and internal analog die temperatures
 
 	// Select identical number of cells and channels on all modules simultaneously (section 2.2.5.2)
-	bq_WriteReg(0, NCHAN_REG, 0x10, 1, FRMWRT_ALL_NR); // set number of cells to 16
-	bq_WriteReg(0, CHANNELS_REG, 0xFFFF0000, 4, FRMWRT_ALL_NR); // select all cell, no AUX channels, and no temperatures
+//	bq_WriteReg(0, NCHAN_REG, 0x10, 1, FRMWRT_ALL_NR); // set number of cells to 16
+//	bq_WriteReg(0, CHANNELS_REG, 0xFFFF0000, 4, FRMWRT_ALL_NR); // select all cell, no AUX channels, and no temperatures
 
 //	// Set cell over-voltage and cell under-voltage thresholds on a single board (section 2.2.6.1)
 //	nDev_ID = 0;
@@ -236,8 +258,8 @@ sint32 bq_InitialiseStack(void)
 //	bq_WriteReg(nDev_ID, 142, 0x6148, 2, FRMWRT_SGL_NR); // set UV threshold = 1.9000V
 
 	// Set cell over-voltage and cell under-voltage thresholds on all boards simultaneously (section 2.2.6.2)
-	bq_WriteReg(0, CELL_OV_REG, 0xD1EC, 2, FRMWRT_ALL_NR); // set OV threshold = 4.1000V
-	bq_WriteReg(0, CELL_UV_REG, 0x6148, 2, FRMWRT_ALL_NR); // set UV threshold = 1.9000V
+//	bq_WriteReg(0, CELL_OV_REG, 0xD1EC, 2, FRMWRT_ALL_NR); // set OV threshold = 4.1000V
+//	bq_WriteReg(0, CELL_UV_REG, 0x6148, 2, FRMWRT_ALL_NR); // set UV threshold = 1.9000V
 
 	return 0;
 }
@@ -251,52 +273,75 @@ void bq_Wakeup(void)
 	gioToggleBit(gioPORTA, 0); // deassert wake
 }
 
-void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data)
+//void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data)
+//{
+//	uint8  nPackets = ( 16 + 2 + 1 + 2 ); // 16 vcells, 0 temperatures, 2 internals temps, 1 header, 2 CRC
+//	uint8  bFrame[( 16 + 2 + 1 + 2 )];
+//	uint8 i = 0;
+//	sint32 responseReturn;
+//
+//	// Send broadcast request to all boards to sample and send results (section 3.2)
+//	bq_WriteReg(bID, CMD_REG, 0x02, 1, FRMWRT_SGL_NR); // send sync sample command
+//	responseReturn = bq_WaitRespFrame(bFrame, nPackets, 5); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+//
+//	if( responseReturn > 0 ){
+//		for(i = 1; i<nPackets-4; i++){
+//			data->cell_voltage[i-1] = bFrame[i];
+//		}
+//		data->internal_digital_temp = bFrame[17];
+//		data->internal_analogue_temp = bFrame[18];
+//	}
+//	else return;
+//
+//}
+
+void bq_Sample_ALL(bq_stack_data * stack)
 {
-	uint8  nPackets = ( 16 + 2 + 1 + 2 ); // 16 vcells, 0 temperatures, 2 internals temps, 1 header, 2 CRC
-	uint8  bFrame[( 16 + 2 + 1 + 2 )];
-	uint8 i = 0;
-	sint32 responseReturn;
-
-	// Send broadcast request to all boards to sample and send results (section 3.2)
-	bq_WriteReg(bID, CMD_REG, 0x02, 1, FRMWRT_SGL_NR); // send sync sample command
-	responseReturn = bq_WaitRespFrame(bFrame, nPackets, 5); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
-
-	if( responseReturn > 0 ){
-		for(i = 1; i<nPackets-4; i++){
-			data->cell_voltage[i-1] = bFrame[i];
-		}
-		data->internal_digital_temp = bFrame[17];
-		data->internal_analogue_temp = bFrame[18];
-	}
-	else return;
-
-}
-
-void bq_Sample_ALL(bq_dev_sample_data_t * data)
-{
-	uint8  nPackets = (2*16) + 1 + 2; // 16 vcells, 0 temperatures, 1 header, 2 CRC
-	uint8  bFrame[(2*16) + 1 + 2];
+	// 16 vsel, 0 asel, 1 GTSEL (digital die), 1 HTSEL (analogue die), 0 V18SEL, 1 REFSEL, 1 MODULESEL, 0 VMMONSEL
+#define  NUM_PACKETS ((2*(BQ_VOLTAGE_CHANNEL_SELECT + BQ_AUX_CHANNEL_SELECT + BQ_DIGITAL_TEMP_SENSE_EN + BQ_ANALOGUE_TEMP_SENSE_EN + 0 + BQ_ANALOGUE_VREF_SENSE_EN + BQ_VMODULE_SELECT + BQ_VMMONSEL_EN)) + 1 + 2) // above plus 1 header & 2 CRC
+	uint8  bFrame[NUM_PACKETS];
 	uint8  * pbFrame = bFrame;
 	uint8 i = 0;
+	uint8 dev_id = 0;
 	sint32 responseReturn;
+	uint8 returnedFrames;
 
 	// Send broadcast request to all boards to sample and send results (section 3.2)
-	bq_WriteReg(0, CMD_REG, 0x00, 1, FRMWRT_ALL_R); // send sync sample command
-	responseReturn = bq_WaitRespFrame(bFrame, nPackets, 5); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+	bq_WriteReg(0, CMD_REG, (BQ_NUMBER_OF_DEVICES-1), 1, FRMWRT_ALL_R); // send sync sample command
+//	bq_WriteReg(0, CMD_REG, (BQ_NUMBER_OF_DEVICES-1), 1, FRMWRT_ALL_NR); // send sync sample command no reponse
 
-	if( responseReturn > 0 ){
-		for(i = 0; i<16; i++){
-			data->cell_voltage[i] = bq_sample_to_voltage(pbFrame + 1 + (2*i));
-		}
-//		data->internal_digital_temp = bq_sample_to_voltage(pbFrame +nPackets-2-3);
-//		data->internal_analogue_temp = bq_sample_to_voltage(pbFrame +nPackets-2-1);
+	delayms(1); // Give the system a moment to sample
+
+	for(dev_id = 0; i<BQ_NUMBER_OF_DEVICES; i++){
+//		bq_WriteReg(dev_id, CMD_REG, (0b1<<5)||(dev_id), 1, FRMWRT_SGL_R); // Request from single device
+		responseReturn = bq_WaitRespFrame(bFrame, NUM_PACKETS, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+
+		returnedFrames = *pbFrame;
+
+		if( responseReturn > 0 ){ // If we did receive a response start storing and organising data
+			i = 0;
+			pbFrame++; // start index from first sample not initialisation frame
+				while(i<BQ_NUM_CELLS){
+					stack->dev[dev_id].cell[i].voltage = bq_adc_to_voltage(pbFrame);
+					i++; // shift cell index 1
+					pbFrame = pbFrame+2; // shift sample index 2
+				}
+				stack->dev[dev_id].internal_digital_temp = ( (((float32)bq_adc_to_voltage(pbFrame))/1000) -2.287)*131.944;
+				pbFrame = pbFrame+2; // shift sample index 2
+				stack->dev[dev_id].internal_analogue_temp = ( (((float32)bq_adc_to_voltage(pbFrame))/1000) -1.8078)*147.514;
+				pbFrame = pbFrame+2; // shift sample index 2
+				stack->dev[dev_id].analogue_reference_voltage = bq_adc_to_voltage(pbFrame);
+				pbFrame = pbFrame+2; // shift sample index 2
+				stack->dev[dev_id].sum_of_cells = 25 * ((uint32)bq_adc_to_voltage(pbFrame));
+			}
 	}
-	else return;
+
+
+
 
 }
 
-uint16 bq_sample_to_voltage(uint8 * pFrames)
+uint16 bq_adc_to_voltage(uint8 * pFrames)
 {
 	uint16 sample = 0;
 	float32 calc = 0;

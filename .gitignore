@@ -30,3 +30,5 @@
 *.exe
 *.out
 *.app
+/Debug__GNU/
+/Debug__TI/

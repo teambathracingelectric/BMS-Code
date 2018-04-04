@@ -7,6 +7,10 @@
  *  @note Built with CCS for Hercules Version: 5.5.0
  */
 
+/*
+ *  Modified by Ed Fowler - University of Bath
+ */
+
 /*****************************************************************************
 **
 **  Copyright (c) 2011-2015 Texas Instruments
@@ -17,8 +21,11 @@
 #ifndef PL455_H_
 #define PL455_H_
 
+/**** DEFAULT BQ DEV SETTINGS ****/
 /* General Config */
-#define BQ_NUMBER_OF_DEVICES			16
+#define BQ_NUMBER_OF_DEVICES			1
+#define BQ_NUM_CELLS					16
+#define BQ_NUM_THERMISTORS				45
 #define BQ_BAUDRATE 					250000
 #define BQ_UART							((sciBASE_t *)sciREG)
 
@@ -30,14 +37,26 @@
 #define BQ_OVERVOLTAGE_THRESHOLD 			4500 //mV
 #define BQ_UNDERVOLTAGE_THRESHOLD			2000 //mV
 // Note: selected channels must match "bq_dev_sample_data_t" structure
-#define BQ_VOLTAGE_CHANNEL_SELECT			0xFFFF // 7.6.3.3: All voltage sense channels, bit 1 = cell 1
-#define BQ_AUX_CHANNEL_SELECT				0xFF // 7.6.3.3: All Auxiliary Channels
+#define BQ_VOLTAGE_CHANNEL_SELECT_MASK		0xFF // 7.6.3.3: All voltage sense channels, bit 1 = cell 1
+#define BQ_VOLTAGE_CHANNEL_SELECT			16 // Just the numerical version for ease of programming
+#define BQ_AUX_CHANNEL_SELECT_MASK			0x07 // 7.6.3.3: All Auxiliary Channels
+#define BQ_AUX_CHANNEL_SELECT				3 // Same as voltage channels except for aux / temp channels
 #define BQ_DIGITAL_TEMP_SENSE_EN			1 // 7.6.3.3: Digital die temperature
 #define BQ_ANALOGUE_TEMP_SENSE_EN			1 // 7.6.3.3: Analogue die temperature
 #define BQ_ANALOGUE_VREF_SENSE_EN			0 // 7.6.3.3: 4.5v analogue voltage reference
 #define BQ_VMODULE_SELECT					0 // 7.6.3.3: Sum-of-cells (VMODULE) monitor, note configure TSTCONFIG[MODULE_MON_EN]
 #define BQ_VMMONSEL_EN						0 // 7.6.3.3: VM (negative supply charge pump) voltage monitor
 
+// Settings generated from #defines above
+//struct BQ_DEV_SETTINGS
+//{
+//	uint32 CHANNELS = 0xFFFF0000; // 7.6.3.3 CHANNELS 0x03–06 (3–6) Channel Select
+//	uint8  OVERSMPL; // 7.6.3.4 OVERSMPL 0x07 (7) Command Oversampling
+//	uint8  NCHAN; // 7.6.3.8 NCHAN 0x0D (13) Number of Channels
+//	uint8  DEVCONFIG; // 7.6.3.9 DEVCONFIG 0x0E (14) Device Configuration
+//	uint8  PWRCONFIG; // 7.6.3.10 PWRCONFIG (0x0F) (15) Power Configuration
+//	uint8  COMCONFIG; // 7.6.3.11 COMCONFIG 0x10–11 (16–17) Communications Configuration
+//};
 
 /* BQ76PL455A Registers + lengths*/
 typedef enum BQ_DEV_REGS
@@ -144,33 +163,89 @@ typedef enum BQ_WRITE_TYPE
 	FRMWRT_ALL_NR	= 0x70 // general broadcast without response
 } bq_write_type_t;
 
-
-typedef struct BQ_DEV_SAMPLE_DATA
+typedef struct BQ_DEV_SAMPLE_RETURN_DATA
 {
-	uint16 cell_voltage[16];
-//	uint16 cell_temp[BQ_AUX_CHANNEL_SELECT];
+	/* Cell and device data */
+	uint16 cell_voltage[BQ_VOLTAGE_CHANNEL_SELECT];
+	uint16 aux_voltage[BQ_AUX_CHANNEL_SELECT];
 	uint16 internal_digital_temp;
 	uint16 internal_analogue_temp;
-} bq_dev_sample_data_t;
+	uint16 analogue_reference_voltage;
+	uint32 sum_of_cells;
+	uint16 negative_voltage_monitor;
+} bq_dev_sample_return_data_t;
 
-typedef struct BQ_DEV_COMMANDS
+typedef struct CELL_DATA
 {
-	void * IntStack;
-	void * Wakeup;
-	bq_dev_sample_data_t * Sample;
-	void * Shutdown;
-	void * ResetStack;
-	void * SaveConfig;
-	uint16 * GetFaults;
-} bq_dev_commands_t;
+	uint16 voltage;
+	float32 soc;
+	uint16 esr;
+} cell_data_t;
+
+typedef struct BQ_DEV_DATA // Also covers sub pack specific data
+{
+	/* Cell and device data */
+	cell_data_t cell[BQ_NUM_CELLS];
+	uint16 temperature[BQ_NUM_THERMISTORS];
+	float32 internal_digital_temp;
+	float32 internal_analogue_temp;
+	uint16 analogue_reference_voltage;
+	uint32 sum_of_cells;
+//	uint16 negative_voltage_monitor;
+
+	/* Device faults */
+	uint16 fault_cell_under_voltage;
+	uint16 fault_cell_over_voltage;
+	uint8 fault_over_temp;
+	uint8 fault_under_temp;
+	uint8 fault_comms;
+	uint8 fault_sys;
+	uint16 fault_dev;
+	uint8 fault_gios;
+
+	/* Control parameters */
+	uint16 cells_to_balance;
+
+	/* Processed Data */
+	uint8 max_voltage_index; // cell index that has highest voltage
+	uint8 min_voltage_index; // cell index that has lowest voltage
+	uint16 avg_voltage;
+	uint8 max_temp_index; // index that has highest temperature
+	uint8 min_temp_index; // index that has lowest temperature
+	uint16 avg_temp;
+} bq_dev_data_t;
+
+typedef struct BQ_STACK_DATA
+{
+	bq_dev_data_t	dev[BQ_NUMBER_OF_DEVICES];
+	uint32			voltage;
+	float32			current;
+	uint16			lowest_cell_voltage;
+	uint16			highest_cell_voltage;
+	uint16			average_cell_voltage;
+	uint16			lowest_temp;
+	uint16			highest_temp;
+	uint16			avg_temp;
+} bq_stack_data;
+
+//typedef struct BQ_DEV_COMMANDS
+//{
+//	void * IntStack;
+//	void * Wakeup;
+//	bq_dev_sample_data_t * Sample;
+//	void * Shutdown;
+//	void * ResetStack;
+//	void * SaveConfig;
+//	uint16 * GetFaults;
+//} bq_dev_commands_t;
 
 /******************************************************************************/
 /*                       Global functions declaration                          */
 /******************************************************************************/
 sint32 bq_InitialiseStack(void);
 void bq_Wakeup(void);
-void bq_Sample_SGL(uint8 bID, bq_dev_sample_data_t * data);
-void bq_Sample_ALL(bq_dev_sample_data_t * data);
+//void bq_Sample_SGL(uint8 bID, bq_stack_data * data);
+void bq_Sample_ALL(bq_stack_data * stack);
 //void bq_Shutdown(void);
 //void bq_ResetStack(void);
 //void bq_SaveConfig(void);
@@ -180,7 +255,7 @@ void bq_Sample_ALL(bq_dev_sample_data_t * data);
 /*                       Local functions declaration                          */
 /******************************************************************************/
 
-uint16 bq_sample_to_voltage(uint8 * pFrames);
+uint16 bq_adc_to_voltage(uint8 * pFrames);
 
 void ResetPL455(void);
 //void WakePL455(void);

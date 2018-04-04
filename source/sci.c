@@ -135,9 +135,9 @@ void sciInit(void)
                       | (uint32)((uint32)0U << 0U);  /* Break detect */
 
     /** - set interrupt enable */
-    sciREG->SETINT = (uint32)((uint32)0U << 26U)  /* Framing error */
-                   | (uint32)((uint32)0U << 25U)  /* Overrun error */
-                   | (uint32)((uint32)0U << 24U)  /* Parity error */
+    sciREG->SETINT = (uint32)((uint32)1U << 26U)  /* Framing error */
+                   | (uint32)((uint32)1U << 25U)  /* Overrun error */
+                   | (uint32)((uint32)1U << 24U)  /* Parity error */
                    | (uint32)((uint32)1U << 9U)  /* Receive */
                    | (uint32)((uint32)1U << 1U)  /* Wakeup */
                    | (uint32)((uint32)0U << 0U);  /* Break detect */
