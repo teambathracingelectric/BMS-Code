@@ -50,17 +50,11 @@
 #include "sys_common.h"
 
 /* USER CODE BEGIN (1) */
-#include "adc.h"
+#include "pl455.h"
 #include "gio.h"
 #include "sci.h"
 #include "rti.h"
 #include "sys_vim.h"
-
-#include "pl455.h"
-
-boolean UART_RX_RDY = 0;
-boolean RTI_TIMEOUT = 0;
-
 /* USER CODE END */
 
 /** @fn void main(void)
@@ -72,12 +66,14 @@ boolean RTI_TIMEOUT = 0;
 */
 
 /* USER CODE BEGIN (2) */
+boolean UART_RX_RDY;
+boolean RTI_TIMEOUT;
 /* USER CODE END */
 
 int main(void)
 {
 /* USER CODE BEGIN (3) */
-	bq_stack_data sample_data;
+//	bq_stack_data sample_data;
 	uint32  isFault;
 //	uint8 silicon_num[2];
 //	sint32 returnCode;
@@ -100,7 +96,7 @@ int main(void)
 
 	CommReset();
 
-	bq_InitialiseStack();
+//	bq_InitialiseStack();
 
 	while(1){
 //			sciSend(sciREG, 5, send);
@@ -110,7 +106,7 @@ int main(void)
 //		returnCode = bq_ReadReg(0, SREV_REG, &silicon_num, 2, 0);
 
 //		bq_Sample_SGL(0, &sample_data);
-		bq_Sample_ALL(&sample_data);
+//		bq_Sample_ALL(&sample_data);
 
 		isFault = sciRxError(BQ_UART);
 

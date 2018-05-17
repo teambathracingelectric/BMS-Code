@@ -14,6 +14,7 @@
 ******************************************************************************/
 
 
+#include <pl455.h>
 #include "string.h"
 
 #include "gio.h"
@@ -21,7 +22,6 @@
 #include "rti.h"
 #include "reg_rti.h"
 
-#include "pl455.h"
 
 extern boolean UART_RX_RDY;
 extern boolean RTI_TIMEOUT;
@@ -336,8 +336,53 @@ void bq_Sample_ALL(bq_stack_data * stack)
 			}
 	}
 
+}
 
+void bq_Cell_Sample_Send_ALL_Request(void)
+{
+	// Send broadcast request to all boards to sample and send results (section 3.2)
+	bq_WriteReg(0, CMD_REG, (BQ_NUMBER_OF_DEVICES-1), 1, FRMWRT_ALL_NR); // send sync sample command no reponse
 
+}
+
+void bq_Cell_Sample_Return_SGL_Request(uint8 bID)
+{
+		bq_WriteReg(bID, CMD_REG, (0b1<<5)||(bID), 1, FRMWRT_SGL_R); // Request from single device
+}
+
+bq_dev_sample_return_data_t bq_Cell_Sample_Store_SGL_Request(uint8 bID)
+{
+//	// 16 vsel, 0 asel, 1 GTSEL (digital die), 1 HTSEL (analogue die), 0 V18SEL, 1 REFSEL, 1 MODULESEL, 0 VMMONSEL
+//#define  NUM_PACKETS ((2*(BQ_VOLTAGE_CHANNEL_SELECT + BQ_AUX_CHANNEL_SELECT + BQ_DIGITAL_TEMP_SENSE_EN + BQ_ANALOGUE_TEMP_SENSE_EN + 0 + BQ_ANALOGUE_VREF_SENSE_EN + BQ_VMODULE_SELECT + BQ_VMMONSEL_EN)) + 1 + 2) // above plus 1 header & 2 CRC
+//	uint8  bFrame[NUM_PACKETS];
+//	uint8  * pbFrame = bFrame;
+//	uint8 i = 0;
+//	sint32 responseReturn;
+//	uint8 returnedFrames;
+//
+//	for(dev_id = 0; i<BQ_NUMBER_OF_DEVICES; i++){
+////		bq_WriteReg(dev_id, CMD_REG, (0b1<<5)||(dev_id), 1, FRMWRT_SGL_R); // Request from single device
+//		responseReturn = bq_WaitRespFrame(bFrame, NUM_PACKETS, 0); // 24 bytes data (x3) + packet header (x3) + CRC (x3), 0ms timeout
+//
+//		returnedFrames = *pData;
+//
+//		if( responseReturn > 0 ){ // If we did receive a response start storing and organising data
+//			i = 0;
+//			pbFrame++; // start index from first sample not initialisation frame
+//				while(i<BQ_NUM_CELLS){
+//					stack->dev[dev_id].cell[i].voltage = bq_adc_to_voltage(pbFrame);
+//					i++; // shift cell index 1
+//					pbFrame = pbFrame+2; // shift sample index 2
+//				}
+//				stack->dev[dev_id].internal_digital_temp = ( (((float32)bq_adc_to_voltage(pbFrame))/1000) -2.287)*131.944;
+//				pbFrame = pbFrame+2; // shift sample index 2
+//				stack->dev[dev_id].internal_analogue_temp = ( (((float32)bq_adc_to_voltage(pbFrame))/1000) -1.8078)*147.514;
+//				pbFrame = pbFrame+2; // shift sample index 2
+//				stack->dev[dev_id].analogue_reference_voltage = bq_adc_to_voltage(pbFrame);
+//				pbFrame = pbFrame+2; // shift sample index 2
+//				stack->dev[dev_id].sum_of_cells = 25 * ((uint32)bq_adc_to_voltage(pbFrame));
+//			}
+//	}
 
 }
 

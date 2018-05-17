@@ -308,6 +308,7 @@ void dmaGroupANotification(dmaInterrupt_t inttype, uint32 channel)
 {
 /*  enter user code between the USER CODE BEGIN and USER CODE END. */
 /* USER CODE BEGIN (54) */
+	void Update_DMA_Comp_Flag(dmaInterrupt_t inttype, uint32 channel);
 /* USER CODE END */
 }
 /* USER CODE BEGIN (55) */

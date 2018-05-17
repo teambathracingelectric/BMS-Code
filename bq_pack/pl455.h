@@ -21,6 +21,8 @@
 #ifndef PL455_H_
 #define PL455_H_
 
+#include "hal_stdtypes.h"
+
 /**** DEFAULT BQ DEV SETTINGS ****/
 /* General Config */
 #define BQ_NUMBER_OF_DEVICES			1
@@ -246,6 +248,9 @@ sint32 bq_InitialiseStack(void);
 void bq_Wakeup(void);
 //void bq_Sample_SGL(uint8 bID, bq_stack_data * data);
 void bq_Sample_ALL(bq_stack_data * stack);
+void bq_Cell_Sample_Send_ALL_Request(void);
+void bq_Cell_Sample_Return_SGL_Request(uint8 bID);
+bq_dev_sample_return_data_t bq_Cell_Sample_Store_SGL_Request(uint8 bID);
 //void bq_Shutdown(void);
 //void bq_ResetStack(void);
 //void bq_SaveConfig(void);

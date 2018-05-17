@@ -51,6 +51,7 @@ extern "C" {
 #endif
 
 /* USER CODE BEGIN (0) */
+#include "sys_dma.h"
 /* USER CODE END */
 
 /** @enum sciIntFlags
@@ -229,6 +230,11 @@ void scilinGetConfigValue(sci_config_reg_t *config_reg, config_value_type_t type
 void sciNotification(sciBASE_t *sci, uint32 flags);
 
 /* USER CODE BEGIN (1) */
+// Added code for initiating a FreeRTOS / DMA type routine.
+void scidmaSend(sciBASE_t *sci, char *source_address); // Imported command from: Hercules SCI With DMA (spna213.pdf)
+void scidmaInit(); // Used to configure the SCI for DMA use
+void Set_DMA_Comp_Flag(dmaInterrupt_t inttype, uint32 channel);
+void Reset_DMA_Comp_Flag(uint32 channel);
 /* USER CODE END */
 /**@}*/
 #ifdef __cplusplus

@@ -48,6 +48,20 @@
 #include "math.h"
 
 /* USER CODE BEGIN (1) */
+#include "sys_dma.h"
+#include <string.h>
+
+/* dma control packet configuration stack */
+uint32 sci_DMA_Comp_Flag;
+uint32 scilin_DMA_Comp_Flag;
+struct dmaCTRLPKT fg_sci_send_dmaCTRLPKT;
+struct dmaCTRLPKT fg_sci_recv_dmaCTRLPKT;
+
+enum dma_COMP_FLAG{
+	dma_sci_DONE = 0x55AAD09E,
+	dma_scilin_DONE = 0xE90DAA55
+};
+
 /* USER CODE END */
 /** @struct g_sciTransfer
 *   @brief Interrupt mode globals
@@ -1034,5 +1048,163 @@ void linHighLevelInterrupt(void)
 /* USER CODE END */
 }
 /* USER CODE BEGIN (37) */
+
+/** @fn void scidmaInit(short mode)
+*   @brief Initialize the SCI and DMA to tranfer SCI data via DMA
+*   @note This function configures the SCI to trigger a DMA request when the SCI TX is complete.
+*/
+void scidmaInit(sciBASE_t *sci)
+{
+	/* Enable DMA */
+	dmaEnable();
+
+	if (sci == scilinREG) {          			/* SCI2 is the default serial comport on LAUNCHXL2 launch pads*/
+
+		/* Enable Interrupt after reception of data */
+		dmaEnableInterrupt(DMA_CH1, BTC);		/* DMA_CH0 is highest priority */
+
+		/* assigning dma request: channel-0 with request line - 1  - TX*/
+		/* DMA Request 29 is for LIN ( SCI2) Transmit */
+		/* Refer Data sheet - Default DMA Request Map section */
+		dmaReqAssign(DMA_CH1,29);
+
+	} else if (sci == sciREG) { 				/* SCI1 */
+//		return;					   				/* SCI1 is not supported at this time */
+
+		/* Enable Interrupt after reception of data */
+		dmaEnableInterrupt(DMA_CH0, BTC);		// DMA_CH0 is highest priority */
+
+		/* assigning dma request: channel-0 with request line - 1  - TX*/
+		/* DMA Request 31 is for SCI1 Transmit */
+		/* Refer Data sheet - Default DMA Request Map section */
+		dmaReqAssign(DMA_CH0,31);
+
+	} else {
+		return;					 				/* Unknown register */
+	}
+
+    /* - Populate dma control packets structure */
+	fg_sci_send_dmaCTRLPKT.CHCTRL    = 0;                 /* channel control            */
+	fg_sci_send_dmaCTRLPKT.ELCNT     = 1;                 /* element count              */
+	fg_sci_send_dmaCTRLPKT.ELDOFFSET = 0;                 /* element destination offset */
+	fg_sci_send_dmaCTRLPKT.ELSOFFSET = 0;                 /* element source offset      */
+	fg_sci_send_dmaCTRLPKT.FRDOFFSET = 0;                 /* frame destination offset   */
+	fg_sci_send_dmaCTRLPKT.FRSOFFSET = 0;                 /* frame source offset        */
+	fg_sci_send_dmaCTRLPKT.PORTASGN  = 4;                 /* port b                     */
+    fg_sci_send_dmaCTRLPKT.RDSIZE    = ACCESS_8_BIT;      /* read size                  */
+	fg_sci_send_dmaCTRLPKT.WRSIZE    = ACCESS_8_BIT;      /* write size                 */
+	fg_sci_send_dmaCTRLPKT.TTYPE     = FRAME_TRANSFER ;   /* transfer type              */
+	fg_sci_send_dmaCTRLPKT.ADDMODERD = ADDR_INC1;         /* address mode read          */
+	fg_sci_send_dmaCTRLPKT.ADDMODEWR = ADDR_FIXED;        /* address mode write         */
+    fg_sci_send_dmaCTRLPKT.AUTOINIT  = AUTOINIT_OFF;      /* autoinit                   */
+
+    /* Reset the Flag */
+    DMA_Comp_Flag = 0x55AAD09E;
+
+	/* Channel 40 - Enable the VIM channel in HalCoGen to include dmaBTCAInterrupt function */
+	vimChannelMap(40, 40, &dmaBTCAInterrupt);
+
+	/* Enable VIM DMA BTCA interrupt to CPU on SCI2 transfer complete */
+	vimEnableInterrupt(40, SYS_IRQ);
+
+} /* scidmaInit */
+
+
+/** @fn void scidmaSend(char *source_address, short mode)
+*   @brief Initialize the SCI and DMA to tranfer SCI data via DMA
+*   @note This function configures the SCI to trigger a DMA request when the SCI TX is complete.
+*
+*   This function configures the DMA in single buffer or multibuffer mode.
+*   In single buffer mode (0) the DMA moves each Byte to the SCI tranmit register when request is set.
+*   In multi buffer mode (1)  the DMA moves 4 Bytes to the SCI transmit buffer when the request is set.
+*/
+void scidmaSend(sciBASE_t *sci, char *source_address)
+{
+#if ((__little_endian__ == 1) || (__LITTLE_ENDIAN__ == 1))
+	uint8 dest_addr_offset=0;		/* 0 for LE */
+#else
+	uint8 dest_addr_offset=3;		/* 3 for BE */
+#endif
+
+	/* Wait for the DMA to complete any existing transfers */
+    while(DMA_Comp_Flag != 0x55AAD09E);
+
+    /* Reset the Flag to not Done*/
+    DMA_Comp_Flag = ~0x55AAD09E;
+
+	/* - Populate dma control packets structure */
+	fg_sci_send_dmaCTRLPKT.SADD       = (uint32)source_address;						/* source address             */
+
+    if (((sci->GCR1 >> 10U) & 1U) == 0U) {	 						/* SCI2 Multibuffer mode      */
+    	fg_sci_send_dmaCTRLPKT.DADD   = (uint32)(&(sci->TD))+dest_addr_offset;	/* In big endianism devices, the destination address needs to be adjusted */
+        fg_sci_send_dmaCTRLPKT.RDSIZE = ACCESS_8_BIT;     							/* read size                  */
+    	fg_sci_send_dmaCTRLPKT.WRSIZE = ACCESS_8_BIT;     							/* write size                 */
+        fg_sci_send_dmaCTRLPKT.FRCNT  = strlen(source_address);    					/* frame count                */
+
+    } else {
+    	fg_sci_send_dmaCTRLPKT.DADD      = (uint32)(&(sci->TD));	 				/* In big endianism devices, the destination address needs to be adjusted
+    	                                                  	  	  	  	  	  	   	* for byte access. The DMA is a big endian master. But the SCI Transmit buffer
+    	                                                  	  	  	  	  	     	    * is accessible at the least significant byte.  */
+    	fg_sci_send_dmaCTRLPKT.RDSIZE    = ACCESS_32_BIT;   		 					/* read size                  */
+    	fg_sci_send_dmaCTRLPKT.WRSIZE    = ACCESS_32_BIT;    		 					/* write size                 */
+        fg_sci_send_dmaCTRLPKT.FRCNT     = strlen(source_address)/4+8;	    			/* frame count                */
+    }
+
+
+    if (sci == scilinREG) {
+		/* - setting dma control packets for transmit */
+		dmaSetCtrlPacket(DMA_CH1,fg_sci_send_dmaCTRLPKT);
+
+		/* - setting the dma channel to trigger on h/w request */
+		dmaSetChEnable(DMA_CH1, DMA_HW);
+    } else if (sci == scilinREG) {
+		/* - setting dma control packets for transmit */
+		dmaSetCtrlPacket(DMA_CH0,fg_sci_send_dmaCTRLPKT);
+
+		/* - setting the dma channel to trigger on h/w request */
+		dmaSetChEnable(DMA_CH0, DMA_HW);
+    } else {
+    	return; /* Unknown interface */
+    }
+
+	/* Enable TX DMA */
+    sci->SETINT = (1 << 16);
+
+} /* scidmaSend */
+
+
+/** @fn void Update_DMA_Comp_Flag()
+*   @brief Switch the DMA complete flag to done and disable the SCI2 TX DMA interrupt
+*   @note This function needs to be called by dmaGroupANotification in notification.c
+*/
+void Set_DMA_Comp_Flag(dmaInterrupt_t inttype, uint32 channel)
+{
+	switch(channel) {
+		case DMA_CH0 :
+			sci_DMA_Comp_Flag = dma_sci_DONE; /* Set the Flag to Done*/
+			sciREG->CLEARINT = (1 << 16); /* Disable TX DMA Interrupt */
+		case DMA_CH1 :
+			scilin_DMA_Comp_Flag = dma_scilin_DONE; /* Set the Flag to Done*/
+			scilinREG->CLEARINT = (1 << 16); /* Disable TX DMA Interrupt */
+		default :
+			return; /* Channel not part of the SCI stuffs */
+	}
+}
+
+void Reset_DMA_Comp_Flag(uint32 channel)
+{
+	switch(channel) {
+		case DMA_CH0 :
+			sci_DMA_Comp_Flag = !dma_sci_DONE; /* Set the Flag to Done*/
+			sciREG->CLEARINT = (1 << 16); /* Disable TX DMA Interrupt */
+		case DMA_CH1 :
+			scilin_DMA_Comp_Flag = !dma_scilin_DONE; /* Set the Flag to Done*/
+			scilinREG->CLEARINT = (1 << 16); /* Disable TX DMA Interrupt */
+		default :
+			return; /* Channel not part of the SCI stuffs */
+	}
+}
+
+
 /* USER CODE END */
 
